@@ -373,7 +373,7 @@ def show_filters():
     
     col1, col2, col3 = st.columns([1, 4, 1])  # Adjust the column width ratios as needed
     with col2:
-        st.image("../assets/logo-big.png", use_column_width=True)
+        st.image("logo-med.png", use_column_width=True)
     
     st.title("PepExplorer Filtering Module")
     st.write("""This is a prototype of the filering module for the `PepExplorer` project. It allows the user to filter candidate genes/peptides 
@@ -489,9 +489,9 @@ def main():
     # Load the original datasets into session state (only once).
     # These are big files, it will take a few seconds.
     if 'gene_metrics_df' not in st.session_state:
-        st.session_state.gene_metrics_df = pd.read_csv('../data/gene-metrics-filtering.csv.gz')  
+        st.session_state.gene_metrics_df = pd.read_csv('data/gene-metrics-filtering.csv.gz')  
     if 'peptide_metrics_df' not in st.session_state:
-        st.session_state.peptide_metrics_df = pd.read_csv('../data/peptide-metrics-filtering.csv.gz')  
+        st.session_state.peptide_metrics_df = pd.read_csv('data/peptide-metrics-filtering.csv.gz')  
 
     show_filters()
     
