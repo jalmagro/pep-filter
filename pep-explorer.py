@@ -373,7 +373,7 @@ def show_filters():
     
     col1, col2, col3 = st.columns([1, 4, 1])  # Adjust the column width ratios as needed
     with col2:
-        st.image("logo-med.png", use_column_width=True)
+        st.image("logo-medium.png", use_column_width=True)
     
     st.title("PepExplorer Filtering Module")
     st.write("""This is a prototype of the filering module for the `PepExplorer` project. It allows the user to filter candidate genes/peptides 
