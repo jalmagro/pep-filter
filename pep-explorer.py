@@ -6,9 +6,16 @@ import io
 # Set of filters that can be applied to the datasets.
 FILTERS = {
     
-    "f_strain_conservation" : {
+    "f_strain_conservation_3D7" : {
         'label': 'Strain Conservation', 
         'column': 'hap_3D7_freq',
+        'op': '>=',
+        'value': 0.99
+    },
+    
+    "f_strain_conservation_any_hap" : {
+        'label': 'Strain Conservation', 
+        'column': 'hap_top_hap_freq',
         'op': '>=',
         'value': 0.99
     },
@@ -165,7 +172,8 @@ def filter_datasets(
     pepetide_metrics_df, 
     identity_percent, 
     alignment_length,
-    strain_conservation, 
+    strain_conservation,
+    haplotype_type,
     expression_rule,
     cpm_cutoff,
     expression_stage, 
@@ -176,8 +184,13 @@ def filter_datasets(
     human_id_filter = FILTERS['f_human_identity_filter'].copy()
     human_id_filter['value'] = identity_percent
     human_length_filter = FILTERS['f_human_length_filter'].copy()
-    human_length_filter['value'] = alignment_length    
-    conservation_filter = FILTERS['f_strain_conservation'].copy()
+    human_length_filter['value'] = alignment_length 
+    
+    # Choose the type of AA haplotype to filter for.
+    if haplotype_type == 'Identical to 3D7':
+        conservation_filter = FILTERS['f_strain_conservation_3D7'].copy()
+    else:
+        conservation_filter = FILTERS['f_strain_conservation_any_hap'].copy()    
     conservation_filter['value'] = strain_conservation
     
     # Compose the list of filters to apply.
@@ -276,11 +289,11 @@ def show_human_identity_filters():
 def show_strain_conservation_filters():
     
     st.write("#### Strain Conservation")
-    st.write("""This slider determines the minimum frequency of the 3D7 AA haplotype observed in all Pf7 African samples (n ~ 8000)
+    st.write("""This slider determines the minimum frequency of the AA haplotype observed in all Pf7 African samples (n ~ 8000)
                 for a candidate peptide or gene to be considered.""")
     with st.expander("Show me an example and more info"):
         st.write("""**Example**: Suppose you set the frequency slider to 1.0, this means that for a candidate peptide or gene exon to 
-                    be retained the only haplotype observed in African field samples must be 3D7 (at a frequency of 100%).
+                    be retained the only haplotype observed in African field samples must be at a frequency of 100%.
                     We recommend a less stringent filtering value (e.g., 0.99 or 0.95), as this would accomodate sequencing errors and 
                     sporadic rare variants.""")                      
         st.write("""Notice this filter behaves differently in genes and peptides. The longer the haplotype, the more likely it is 
@@ -288,11 +301,16 @@ def show_strain_conservation_filters():
                     (a single fixed haplotype at 100% frequency) whereas long genes are more likely to stratify into different haplotypes.
                     """)
 
-    
+    st.session_state.haplotype_type = st.radio(
+        "Haplotype Selection",
+        options=["Identical to 3D7", "Any haplotype"],
+        help="Select between the top haplotype required to be identical 3D7 or to allow any haplotype."
+    )
+
     st.session_state.strain_conservation = st.slider(
-        "3D7 AA Haplotype Frequency (minimum allowed)",
+        "AA Haplotype Frequency (minimum allowed)",
         min_value=0.0, max_value=1.0, step=0.01, value=st.session_state.strain_conservation,
-        help="""Frequency of the 3D7 haplotype in field African samples."""
+        help="""Frequency of the AA haplotype in field African samples."""
         )
 
 
@@ -399,6 +417,8 @@ def show_filters():
         st.session_state.expression_stage = []
     if 'homology_species' not in st.session_state:
         st.session_state.homology_species = []
+    if 'haplotype_type' not in st.session_state:
+        st.session_state.haplotype_type = "Identical to 3D7"
         
     # Init initial summary stats for filtering.
     if 'summary_genes_df' not in st.session_state:
@@ -409,6 +429,7 @@ def show_filters():
             st.session_state.identity_percent,
             st.session_state.alignment_length,
             st.session_state.strain_conservation,
+            st.session_state.haplotype_type,
             st.session_state.expression_rule,
             st.session_state.cpm_cutoff,
             st.session_state.expression_stage,
@@ -442,6 +463,7 @@ def show_filters():
                 st.session_state.identity_percent,
                 st.session_state.alignment_length,
                 st.session_state.strain_conservation,
+                st.session_state.haplotype_type,
                 st.session_state.expression_rule,
                 st.session_state.cpm_cutoff,
                 st.session_state.expression_stage,
@@ -467,12 +489,12 @@ def show_filters():
     with gene_col_download:
         st.download_button(
             label="Download List of Candidate Genes",
-            data=dataframe_to_csv(st.session_state.filtered_genes_df[['gene_id', 'chromosome', 'start', 'end', 'gene_name', 'plasmo_db_url', 'num_peptides']]),
+            data=dataframe_to_csv(st.session_state.filtered_genes_df[['gene_id', 'chromosome', 'start', 'end', 'gene_name', 'plasmo_db_url', 'num_peptides', 'hap_top_hap']]),
             file_name="candidate-genes.csv",
             mime="text/csv"
         )
     with peptide_col_download:
-        peptide_results_df = st.session_state.filtered_peptides_df[['peptide_id', 'gene_id', 'start', 'end', 'peptide', 'chromosome', 'gene_name', 'plasmo_db_url']]
+        peptide_results_df = st.session_state.filtered_peptides_df[['peptide_id', 'gene_id', 'start', 'end', 'peptide', 'chromosome', 'gene_name', 'plasmo_db_url', 'hap_top_hap']]
         compress_data = False
         if len(peptide_results_df) > 20000:
             compress_data = True
@@ -491,7 +513,7 @@ def main():
     if 'gene_metrics_df' not in st.session_state:
         st.session_state.gene_metrics_df = pd.read_csv('data/gene-metrics-filtering.csv.gz')  
     if 'peptide_metrics_df' not in st.session_state:
-        st.session_state.peptide_metrics_df = pd.read_csv('data/peptide-metrics-filtering.csv.gz')  
+        st.session_state.peptide_metrics_df = pd.read_csv('data/peptide-metrics-filtering.csv.gz', low_memory=False)  
 
     show_filters()
     
