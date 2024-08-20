@@ -432,7 +432,7 @@ def show_strain_conservation_filters():
         st.write(""" - **Xth Percentile**: Represents the gene by the frequency value (Z) for which X% of the gene’s peptides have a frequency ≤ Z.""")
         
         st.write("""#### Example: Filtering by Percentile""")
-        st.write("""For example, if you set the minimum allowed frequency to 0.99 and decide to use frequency percentiles choosing the 10th percentile, you will filter out any gene for which less than 90% of their peptides have a frequency below 0.99.""")
+        st.write("""For example, if you set the minimum allowed frequency to 0.99 and decide to use frequency percentiles choosing the 10th percentile, you will filter out any gene for which less than 90% of their peptides have a frequency above 0.99.""")
     
         st.write("""#### Important Note""")
         st.write("""Peptides are always evaluated individually. The gene extrapolation rules apply only to the way gene metrics are calculated, not to individual peptides.""")
