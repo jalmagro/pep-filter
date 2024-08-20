@@ -582,7 +582,7 @@ def show_filters():
     if 'human_id_gene_rule' not in st.session_state:
         st.session_state.human_id_gene_rule = "Use mean values over gene peptides"
     if 'human_id_gene_pc' not in st.session_state:
-        st.session_state.human_id_gene_pc = 5
+        st.session_state.human_id_gene_pc = 95
     if 'human_id_joint_rule' not in st.session_state:
         st.session_state.human_id_joint_rule = "Joint (use both conditions in same filter)"      
         
@@ -658,11 +658,30 @@ def show_filters():
         st.write('\n')
         st.write("## Gene Filtering Results")
         st.write("Below is a summary of the filtering results. You have the option to download either the summary of the applied filters or the final list of filtered genes. Please note that genes are filtered independently from peptides, based on the filtering settings you’ve configured.")
+        st.write("")
+        
         st.dataframe(st.session_state.summary_genes_df.set_index('filter').drop('order', axis=1))    
+        
+        if st.session_state.human_id_gene_rule == "Use mean values over gene peptides":
+            st.markdown(f'###### Human identity gene-extrapolation rule: `Mean over gene peptides`')
+        else:            
+            human_id_gene_pc = int(str(st.session_state.human_id_gene_pc).replace('min','0').replace('max','100'))            
+            st.markdown(f'###### Human identity gene-extrapolation rule: `Percentile over gene peptides`')
+            st.write(f' - (`{human_id_gene_pc}th`) up to **{100 - human_id_gene_pc}% of gene peptides can fail** identity and length filters')            
+            
+            
+        if st.session_state.haplotype_gene_rule == "Use frequency of full exon haplotype":
+            st.markdown(f'###### Strain conservation gene-extrapolation rule: `Full gene haplotype`')
+        else:
+            haplotype_gene_pc = int(str(st.session_state.haplotype_gene_pc).replace('min','0').replace('max','100'))
+            st.markdown(f'###### Strain conservation gene-extrapolation rule: `Percentile over gene peptides`')
+            st.write(f'- (`{haplotype_gene_pc}th`) at least **{100 - haplotype_gene_pc}% of gene peptides must pass** frequency filter')
+    
+        st.write("\n")
         st.markdown(f'##### Genes retained: `{num_genes_retained:,}`')
         st.write(f'##### Total number of peptides: `{num_total_peptides:,}`')
         st.write(f'##### Average number of peptides per gene: `{round(num_total_peptides/num_genes_retained, 2):,}`')        
-
+        st.write("")
         lc, rc, _ = st.columns([1,1,2])
         lc.download_button(
             label="Download Filtering Summary (Genes)",
@@ -684,12 +703,13 @@ def show_filters():
         st.write('\n')
         st.write('\n')
         st.write("## Peptide Filtering Results")
-        st.write("Below is a summary of the filtering results. You have the option to download either the summary of the applied filters or the final list of filtered peptides. Please note that genes are filtered independently from peptides, based on the filtering settings you’ve configured.")
+        st.write("Below is a summary of the filtering results. You have the option to download either the summary of the applied filters or the final list of filtered peptides. Please note that genes are filtered independently from peptides, based on the filtering settings you’ve configured.")                
         st.dataframe(st.session_state.summary_peptides_df.set_index('filter').drop('order', axis=1))                
         st.write(f'##### Peptides retained: `{num_total_peptides:,}`')
         st.write(f'##### Genes involved (at least one peptide retained): `{num_genes_retained:,}`')
         st.write(f'##### Average number of peptides per gene: `{round(num_total_peptides/num_genes_retained, 2):,}`')        
-
+        st.write("")
+        
         peptide_results_df = st.session_state.filtered_peptides_df[['peptide_id', 'gene_id', 'start', 'end', 'peptide', 'chromosome', 'gene_name', 'plasmo_db_url', 'hap_top_hap']]
         compress_data = False
         if len(peptide_results_df) > 20000:
