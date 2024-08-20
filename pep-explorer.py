@@ -1,4 +1,5 @@
 import gzip
+import re
 import streamlit as st
 import pandas as pd
 import io
@@ -19,7 +20,7 @@ FILTERS = {
         'op': '>=',
         'value': 0.99
     },
-
+    
     "f_human_identity_filter" : {
         'label': 'Human Identity %', 
         'column': 'blt_pident',
@@ -169,16 +170,27 @@ def call_expression_data(df, stage, cutoff, min_num_replicates, total_replicates
 
 def filter_datasets(
     gene_metrics_df, 
-    pepetide_metrics_df, 
+    pepetide_metrics_df,
+    human_id_gene_rule,
+    human_id_gene_pc, 
     identity_percent, 
     alignment_length,
     strain_conservation,
+    haplotype_gene_rule,
+    haplotype_gene_pc,
     haplotype_type,
     expression_rule,
     cpm_cutoff,
     expression_stage, 
     homology_species
 ):
+    
+    # Translate min or max values from percentiles into 0/100th percentiles.
+    if isinstance(human_id_gene_pc, str):
+        human_id_gene_pc = int(human_id_gene_pc.replace('min','0').replace('max','100'))
+    if isinstance(haplotype_gene_pc, str):
+        haplotype_gene_pc = int(haplotype_gene_pc.replace('min','0').replace('max','100'))
+    
     # Filters that are always executed.
     # Update their filtering values.
     human_id_filter = FILTERS['f_human_identity_filter'].copy()
@@ -186,11 +198,21 @@ def filter_datasets(
     human_length_filter = FILTERS['f_human_length_filter'].copy()
     human_length_filter['value'] = alignment_length 
     
+    # Get the right percentile column if required.
+    if human_id_gene_rule == 'Use percentile values over gene peptides':
+        human_id_filter['column'] += f'_p{human_id_gene_pc:02}'
+        human_length_filter['column'] += f'_p{human_id_gene_pc:02}'
+
     # Choose the type of AA haplotype to filter for.
-    if haplotype_type == 'Identical to 3D7':
-        conservation_filter = FILTERS['f_strain_conservation_3D7'].copy()
-    else:
+    if haplotype_type == 'Identical to 3D7':        
+        conservation_filter = FILTERS['f_strain_conservation_3D7'].copy()                        
+    else:        
         conservation_filter = FILTERS['f_strain_conservation_any_hap'].copy()    
+    
+    # Get the right percentile column if required.
+    if haplotype_gene_rule == 'Use frequency percentile over gene peptides':
+        conservation_filter['column'] += f'_p{haplotype_gene_pc:02}'        
+    
     conservation_filter['value'] = strain_conservation
     
     # Compose the list of filters to apply.
@@ -243,8 +265,14 @@ def filter_datasets(
     if 'P. knowlesi' in homology_species:
         filters_to_apply.append(FILTERS['f_pk_homology'])
 
-    # Create summary dataframes (example)
+    # Create summary dataframes for genes.    
     gene_summary_df, filtered_genes_df = apply_filters_sequentially(gene_metrics_df, filters_to_apply, only_summary=False)
+    
+    # And peptides.
+    # HACK: We need to create separate filter lists for gene and peptides as now it is possible for the filters to target
+    #  different columns (e.g., percentiles). For the time being we just replace the _pXX suffixes to fix the problem.
+    for f in filters_to_apply:
+        f['column'] = re.sub(r'_p\d{2,3}', '', f['column'])
     peptide_summary_df, filtered_peptides_df = apply_filters_sequentially(pepetide_metrics_df, filters_to_apply, only_summary=False)
 
     return gene_summary_df, peptide_summary_df, filtered_genes_df, filtered_peptides_df
@@ -269,6 +297,25 @@ def show_human_identity_filters():
                     have no matches).                        
                     """)
 
+    # Gene filtering rules.
+    col1, col2 = st.columns([1.5,1])
+    # Rule radio options
+    with col1:
+        st.session_state.human_id_gene_rule = st.radio(
+            "Rule for gene filtering",
+            options=["Use mean values over gene peptides", "Use percentile values over gene peptides"],
+            index=0, 
+            help="Select the rule to filter genes (peptide filtering is not affected by this)."
+        )
+    # CPM cutoff slider
+    with col2:        
+        st.session_state.human_id_gene_pc = st.select_slider(
+            "Metrics percentile",
+            options=['min',1,5,10,25,50,75,90,95,99,'max'],
+            value=st.session_state.human_id_gene_pc, 
+            help="Chooses which percentile (over the gene peptides metrics) to use for filtering genes."        
+        )
+        
     pident_col, length_col = st.columns(2)                    
     # Identity Percent Slider
     with pident_col:
@@ -300,6 +347,26 @@ def show_strain_conservation_filters():
                     to accumulate mutations, which means that many peptide haplotypes (20-AAs) have no mutations at all 
                     (a single fixed haplotype at 100% frequency) whereas long genes are more likely to stratify into different haplotypes.
                     """)
+
+    
+    # Gene filtering rules.
+    col1, col2 = st.columns([1.5,1])
+    # Rule radio options
+    with col1:
+        st.session_state.haplotype_gene_rule = st.radio(
+            "Rule for gene filtering",
+            options=["Use frequency of full exon haplotype", "Use frequency percentile over gene peptides"],
+            index=0, 
+            help="Select the rule to filter genes (peptide filtering is not affected by this)."
+        )
+    # CPM cutoff slider
+    with col2:        
+        st.session_state.haplotype_gene_pc = st.select_slider(
+            "Frequency percentile",
+            options=['min',1,5,10,25,50,75,90,95,99,'max'],
+            value=st.session_state.haplotype_gene_pc, 
+            help="Chooses which frequency percentile (over the gene peptides) to use for filtering genes."        
+        )
 
     st.session_state.haplotype_type = st.radio(
         "Haplotype Selection",
@@ -419,6 +486,14 @@ def show_filters():
         st.session_state.homology_species = []
     if 'haplotype_type' not in st.session_state:
         st.session_state.haplotype_type = "Identical to 3D7"
+    if 'haplotype_gene_rule' not in st.session_state:
+        st.session_state.haplotype_gene_rule = "Use frequency of full exon haplotype"
+    if 'haplotype_gene_pc' not in st.session_state:
+        st.session_state.haplotype_gene_pc = 5    
+    if 'human_id_gene_rule' not in st.session_state:
+        st.session_state.human_id_gene_rule = "Use mean values over gene peptides"
+    if 'human_id_gene_pc' not in st.session_state:
+        st.session_state.human_id_gene_pc = 5
         
     # Init initial summary stats for filtering.
     if 'summary_genes_df' not in st.session_state:
@@ -426,14 +501,18 @@ def show_filters():
         summary_genes_df, summary_peptides_df, filtered_genes_df, filtered_peptides_df = filter_datasets(
             st.session_state.gene_metrics_df,
             st.session_state.peptide_metrics_df,
+            st.session_state.human_id_gene_rule,
+            st.session_state.human_id_gene_pc,            
             st.session_state.identity_percent,
             st.session_state.alignment_length,
             st.session_state.strain_conservation,
+            st.session_state.haplotype_gene_rule,
+            st.session_state.haplotype_gene_pc,
             st.session_state.haplotype_type,
             st.session_state.expression_rule,
             st.session_state.cpm_cutoff,
             st.session_state.expression_stage,
-            st.session_state.homology_species
+            st.session_state.homology_species,            
         )            
         # Save in the global state.
         st.session_state.summary_genes_df = summary_genes_df
@@ -460,9 +539,13 @@ def show_filters():
             summary_genes_df, summary_peptides_df, filtered_genes_df, filtered_peptides_df = filter_datasets(
                 st.session_state.gene_metrics_df,
                 st.session_state.peptide_metrics_df,
+                st.session_state.human_id_gene_rule,
+                st.session_state.human_id_gene_pc, 
                 st.session_state.identity_percent,
                 st.session_state.alignment_length,
                 st.session_state.strain_conservation,
+                st.session_state.haplotype_gene_rule,
+                st.session_state.haplotype_gene_pc,
                 st.session_state.haplotype_type,
                 st.session_state.expression_rule,
                 st.session_state.cpm_cutoff,
@@ -478,14 +561,26 @@ def show_filters():
     # Display summary statistics
     gene_col, peptide_col = st.columns([1, 1])  # Adjust the ratio to control the width    
     with gene_col:
-        st.write("### Gene Filtering")
+        num_genes_retained = len(st.session_state.filtered_genes_df)
+        num_total_peptides = st.session_state.filtered_genes_df.num_peptides.sum()
+        st.write("## Gene Filtering")
+        st.markdown(f'##### Genes retained: **{num_genes_retained:,}**')
+        st.write(f'Total peptides: {num_total_peptides:,}')
+        st.write(f'Average peptides per gene: {round(num_total_peptides/num_genes_retained, 2):,}')
+        
         st.dataframe(st.session_state.summary_genes_df.set_index('filter').drop('order', axis=1))
     with peptide_col:
-        st.write("### Peptide Filtering")
+        num_genes_retained = len(set(st.session_state.filtered_peptides_df.gene_id))
+        num_total_peptides = len(st.session_state.filtered_peptides_df)
+        st.write("## Peptide Filtering")
+        st.write(f'##### Pepties retained: **{num_total_peptides:,}**')
+        st.write(f'Genes involved: {num_genes_retained:,}')
+        st.write(f'Average peptides per gene: {round(num_total_peptides/num_genes_retained, 2):,}')
+        
         st.dataframe(st.session_state.summary_peptides_df.set_index('filter').drop('order', axis=1))
 
 
-    gene_col_download, peptide_col_download = st.columns([1, 1])
+    gene_col_download, peptide_col_download = st.columns([1,1])
     with gene_col_download:
         st.download_button(
             label="Download List of Candidate Genes",
