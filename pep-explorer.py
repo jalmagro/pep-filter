@@ -255,7 +255,7 @@ def filter_datasets(
     
     # Compose the list of filters to apply.
     # Check if we need to nest filters (so the conditions are computed simultaneously).
-    if human_id_joint_rule == "Joint (both conditions must be true simultaneously)":
+    if human_id_joint_rule == "Joint (use both conditions in same filter)":
         filters_to_apply = [[human_id_filter, human_length_filter], conservation_filter]
     else:
         filters_to_apply = [human_id_filter, human_length_filter, conservation_filter]
@@ -340,7 +340,7 @@ def show_human_identity_filters():
         st.write(""" - **Alignment Length Slider**: If you set the alignment length slider to 18, only alignments covering 18 or fewer amino acids of the 20-AA peptides will be considered.""")
             
         st.write("""#### Filter Combination""")
-        st.write("""If you want both conditions (identity ≤ 90% AND alignment length ≤ 18) to be met simultaneously, select "Joint" as the Filter Combination option. This ensures that only alignments satisfying both criteria are retained. Otherwise, the filters will be executed sequentially.""")
+        st.write("""If you want both conditions (identity ≤ 90% AND alignment length ≤ 18) to be be shown simultaneously, select "Joint" as the Filter Combination option. Otherwise, the filters will be executed sequentially. **Notice you'll obtain the same results** it only changes the way conditions are groupe into filters.""")
     
         st.write("""#### Gene Filtering Options""")
         st.write("""This filter is primarily designed to work with peptides, but you can choose how values for genes are extrapolated using the **Rule for Gene Filtering** options:""")
@@ -378,10 +378,10 @@ def show_human_identity_filters():
             help="Chooses which percentile (over the gene peptides metrics) to use for filtering genes."        
         )
     
-    # Choose filter mode    
+    # # Choose filter mode    
     st.session_state.human_id_joint_rule = st.radio(
         "Filter combination (identity and length)",
-        options=["Joint (both conditions must be true simultaneously)", "Independent (evaluated sequentially)"],
+        options=["Joint (use both conditions in same filter)", "Independent (evaluated sequentially)"],
         index=0,  # Default to "All replicates"
         help="Select the way the filtering conditions are applied to the data for human identity filtering."
     )
@@ -584,7 +584,7 @@ def show_filters():
     if 'human_id_gene_pc' not in st.session_state:
         st.session_state.human_id_gene_pc = 5
     if 'human_id_joint_rule' not in st.session_state:
-        st.session_state.human_id_joint_rule = "Joint (both conditions must be true simultaneously)"      
+        st.session_state.human_id_joint_rule = "Joint (use both conditions in same filter)"      
         
     # Init initial summary stats for filtering.
     if 'summary_genes_df' not in st.session_state:
