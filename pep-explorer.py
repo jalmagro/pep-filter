@@ -354,7 +354,7 @@ def show_human_identity_filters():
         st.write(""" - **Xth Percentile**: Represents the gene by the value of the metric (Z) for which X% of the gene’s peptides have a value ≤ Z.""")
         
         st.write("""#### Example: Filtering by Percentile""")
-        st.write("""For example, if you set the alignment length filter to the 90th percentile, this will sort all peptides of a gene by alignment length (in increasing order) and select the length that is greater than 90% of the peptides. This value will represent the gene in the filter evaluation.""")
+        st.write("""For example, if you set the alignment length slider to 18 amino acids (AAs) and apply the alignment length filter at the 90th percentile, the peptides of each gene will be sorted by alignment length in increasing order. The filter will then select the length that is greater than 90% of the peptides for each gene. This value will represent the gene in the filter evaluation. As a result, any gene for which 10% or more of its peptides have a matching alignment length exceeding 18 AAs (the threshold set by the slider) will be removed.""")
 
         st.write("""#### Important Note""")
         st.write("""Peptides are always evaluated individually. The gene extrapolation rules apply only to the way gene metrics are calculated, not to individual peptides.""")
@@ -432,7 +432,7 @@ def show_strain_conservation_filters():
         st.write(""" - **Xth Percentile**: Represents the gene by the frequency value (Z) for which X% of the gene’s peptides have a frequency ≤ Z.""")
         
         st.write("""#### Example: Filtering by Percentile""")
-        st.write("""For example, if you set the frequency filter to the 10th percentile, this will sort all peptides of a gene by frequency (in increasing order) and select the frequency that is greater than 10% of the peptides. This value will represent the gene in the filter evaluation.""")
+        st.write("""For example, if you set the minimum allowed frequency to 0.99 and decide to use frequency percentiles choosing the 10th percentile, you will filter out any gene for which less than 90% of their peptides have a frequency below 0.99.""")
     
         st.write("""#### Important Note""")
         st.write("""Peptides are always evaluated individually. The gene extrapolation rules apply only to the way gene metrics are calculated, not to individual peptides.""")
