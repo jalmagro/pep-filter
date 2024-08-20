@@ -101,15 +101,15 @@ def dataframe_to_csv(df, compress_data=False):
         gzipped_csv = gzip.compress(csv_buffer.getvalue().encode('utf-8'))
         return gzipped_csv
 
-
 def apply_filters_sequentially(df, filters, only_summary=False):
     """
-    Apply a list of filters sequentially to a DataFrame and return the filtered DataFrames
-    and a summary DataFrame.
+    Apply a list of filters (which can include nested filters) sequentially to a DataFrame 
+    and return the filtered DataFrames and a summary DataFrame.
 
     Parameters:
         df (pd.DataFrame): The DataFrame to be filtered.
-        filters (list of dict): A list of filter specifications.
+        filters (list of dict or list of list of dict): A list of filter specifications or nested lists of filter specifications.
+        only_summary (bool): If True, only return the summary DataFrame.
 
     Returns:
         filtered_dfs (list of pd.DataFrame): A list of DataFrames resulting from applying each filter.
@@ -123,26 +123,44 @@ def apply_filters_sequentially(df, filters, only_summary=False):
         'remaining': len(df),
         'fraction': 1.0
     })
-                            
+
     current_df = df.copy()
-    for i, filter_dict in enumerate(filters):
-        label = filter_dict['label']
-        column = filter_dict['column']
-        op = filter_dict['op']
-        value = filter_dict['value']
+    
+    for i, filter_group in enumerate(filters):
+        if isinstance(filter_group, dict):
+            # If it's a single filter (not nested), convert it to a list for consistency
+            filter_group = [filter_group]
+
+        combined_filter_description = []
+        combined_condition = np.full(len(current_df), True)
         
-        # Create a filter description
-        filter_description = f"{label} {op} {value}"
+        for filter_dict in filter_group:
+            label = filter_dict['label']
+            column = filter_dict['column']
+            op = filter_dict['op']
+            value = filter_dict['value']
+
+            # Create a filter condition based on the operation
+            if op == '>=':
+                condition = current_df[column] >= value
+            elif op == '<=':
+                condition = current_df[column] <= value
+            elif op == '==':
+                condition = current_df[column] == value
+            else:
+                raise ValueError(f"Unsupported filter operation: {op}")
+            
+            # Combine conditions with logical AND
+            combined_condition &= condition
+            
+            # Create a description for this individual filter
+            combined_filter_description.append(f"{label} {op} {value}")
         
-        # Apply the filter
-        if op == '>=':
-            filtered_df = current_df[current_df[column] >= value]
-        elif op == '<=':
-            filtered_df = current_df[current_df[column] <= value]
-        elif op == '==':
-            filtered_df = current_df[current_df[column] == value]
-        else:
-            raise ValueError(f"Unsupported filter operation: {op}")
+        # Join all individual filter descriptions with 'AND'
+        filter_description = ' AND '.join(combined_filter_description)
+        
+        # Apply the combined filter to the DataFrame
+        filtered_df = current_df[combined_condition]
         
         # Store the filtered DataFrame
         filtered_dfs.append(filtered_df)
@@ -163,7 +181,7 @@ def apply_filters_sequentially(df, filters, only_summary=False):
 
     if only_summary:
         return summary_df
-    return summary_df, filtered_df
+    return summary_df, filtered_dfs
 
 def call_expression_data(df, stage, cutoff, min_num_replicates, total_replicates):    
     return (df[[f'exp_{stage}_cpm_r{i+1}' for i in range(total_replicates)]] >= cutoff).sum(axis=1) >= min_num_replicates
