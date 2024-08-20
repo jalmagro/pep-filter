@@ -657,7 +657,7 @@ def show_filters():
     with st.container():
         st.write('\n')
         st.write("## Gene Filtering Results")
-        st.write("Here you'll find a summary of the filtering results. You can download the summary of the filtering or the final list of genes. Remember that genes are filtered independently of peptides (following your filtering configuration).")
+        st.write("Below is a summary of the filtering results. You have the option to download either the summary of the applied filters or the final list of filtered genes. Please note that genes are filtered independently from peptides, based on the filtering settings you’ve configured.")
         st.dataframe(st.session_state.summary_genes_df.set_index('filter').drop('order', axis=1))    
         st.markdown(f'##### Genes retained: `{num_genes_retained:,}`')
         st.write(f'##### Total number of peptides: `{num_total_peptides:,}`')
@@ -684,7 +684,7 @@ def show_filters():
         st.write('\n')
         st.write('\n')
         st.write("## Peptide Filtering Results")
-        st.write("Here you'll find a summary of the filtering results. You can download the summary of the filtering or the final list of genes. Remember that genes are filtered independently of peptides (following your filtering configuration).")
+        st.write("Below is a summary of the filtering results. You have the option to download either the summary of the applied filters or the final list of filtered peptides. Please note that genes are filtered independently from peptides, based on the filtering settings you’ve configured.")
         st.dataframe(st.session_state.summary_peptides_df.set_index('filter').drop('order', axis=1))                
         st.write(f'##### Peptides retained: `{num_total_peptides:,}`')
         st.write(f'##### Genes involved (at least one peptide retained): `{num_genes_retained:,}`')
