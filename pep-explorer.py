@@ -582,7 +582,7 @@ def show_filters():
     if 'human_id_gene_rule' not in st.session_state:
         st.session_state.human_id_gene_rule = "Use mean values over gene peptides"
     if 'human_id_gene_pc' not in st.session_state:
-        st.session_state.human_id_gene_pc = 95
+        st.session_state.human_id_gene_pc = 75
     if 'human_id_joint_rule' not in st.session_state:
         st.session_state.human_id_joint_rule = "Joint (use both conditions in same filter)"      
         
