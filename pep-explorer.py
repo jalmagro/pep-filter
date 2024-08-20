@@ -2,7 +2,9 @@ import gzip
 import re
 import streamlit as st
 import pandas as pd
+import numpy as np
 import io
+import itertools
 
 # Set of filters that can be applied to the datasets.
 FILTERS = {
@@ -92,6 +94,16 @@ FILTERS = {
     }
 }
 
+def flatten_list(nested_list):
+    """Flatten a list that may contain nested lists and single elements."""
+    flat_list = []
+    for item in nested_list:
+        if isinstance(item, list):
+            flat_list.extend(flatten_list(item))
+        else:
+            flat_list.append(item)
+    return flat_list
+
 def dataframe_to_csv(df, compress_data=False):
     csv_buffer = io.StringIO()
     df.to_csv(csv_buffer, index=False)
@@ -100,6 +112,12 @@ def dataframe_to_csv(df, compress_data=False):
     else:
         gzipped_csv = gzip.compress(csv_buffer.getvalue().encode('utf-8'))
         return gzipped_csv
+
+def render_dataframe_as_html(df):
+    """Render the DataFrame as HTML with line breaks correctly displayed."""
+    df = df.applymap(lambda x: str(x).replace('\n', '<br>') if isinstance(x, str) else x)
+    df_html =df.to_html(escape=False)
+    st.markdown(df_html, unsafe_allow_html=True)
 
 def apply_filters_sequentially(df, filters, only_summary=False):
     """
@@ -157,7 +175,7 @@ def apply_filters_sequentially(df, filters, only_summary=False):
             combined_filter_description.append(f"{label} {op} {value}")
         
         # Join all individual filter descriptions with 'AND'
-        filter_description = ' AND '.join(combined_filter_description)
+        filter_description = ' \n AND '.join(combined_filter_description)
         
         # Apply the combined filter to the DataFrame
         filtered_df = current_df[combined_condition]
@@ -183,6 +201,7 @@ def apply_filters_sequentially(df, filters, only_summary=False):
         return summary_df
     return summary_df, filtered_dfs
 
+
 def call_expression_data(df, stage, cutoff, min_num_replicates, total_replicates):    
     return (df[[f'exp_{stage}_cpm_r{i+1}' for i in range(total_replicates)]] >= cutoff).sum(axis=1) >= min_num_replicates
 
@@ -190,7 +209,8 @@ def filter_datasets(
     gene_metrics_df, 
     pepetide_metrics_df,
     human_id_gene_rule,
-    human_id_gene_pc, 
+    human_id_gene_pc,
+    human_id_joint_rule,
     identity_percent, 
     alignment_length,
     strain_conservation,
@@ -234,8 +254,12 @@ def filter_datasets(
     conservation_filter['value'] = strain_conservation
     
     # Compose the list of filters to apply.
-    filters_to_apply = [human_id_filter, human_length_filter, conservation_filter]
-    
+    # Check if we need to nest filters (so the conditions are computed simultaneously).
+    if human_id_joint_rule == "Joint (both conditions must be true simultaneously)":
+        filters_to_apply = [[human_id_filter, human_length_filter], conservation_filter]
+    else:
+        filters_to_apply = [human_id_filter, human_length_filter, conservation_filter]
+            
     # Recall gene expression.
     if expression_rule == "At least one replicate":
         min_num_replicates = 1
@@ -285,13 +309,18 @@ def filter_datasets(
 
     # Create summary dataframes for genes.    
     gene_summary_df, filtered_genes_df = apply_filters_sequentially(gene_metrics_df, filters_to_apply, only_summary=False)
+    # Retain only the final filtering results.
+    filtered_genes_df = filtered_genes_df[-1]
     
     # And peptides.
     # HACK: We need to create separate filter lists for gene and peptides as now it is possible for the filters to target
-    #  different columns (e.g., percentiles). For the time being we just replace the _pXX suffixes to fix the problem.
-    for f in filters_to_apply:
+    #  different columns (e.g., percentiles). For the time being we just replace the _pXX suffixes to fix the problem
+    # Notice we need to flatten the list to deal with nested filters.
+    for f in flatten_list(filters_to_apply) :
         f['column'] = re.sub(r'_p\d{2,3}', '', f['column'])
     peptide_summary_df, filtered_peptides_df = apply_filters_sequentially(pepetide_metrics_df, filters_to_apply, only_summary=False)
+    # Retain only the final filtering results.
+    filtered_peptides_df = filtered_peptides_df[-1]
 
     return gene_summary_df, peptide_summary_df, filtered_genes_df, filtered_peptides_df
 
@@ -304,16 +333,31 @@ def show_human_identity_filters():
             allowed, which is the proportion of AAs that match exactly between the Pf peptide an human exon sequence. 
             The alignment length slider determines the maximum allowed length of the aligned region between the two sequences.""")
 
-    with st.expander("Show me an example and more info"):
-        st.write("""**Example**: Suppose you set the identity slider to 90%. This means that only alignments where 90% or less 
-                    of the amino acids match between the sequences will be shown. If you set the alignment 
-                    length slider to 18, only alignments that cover 18 amino acids or less of the 20-AA peptides will 
-                    be considered. This combination would filter out any alignments where the percentage identity is 
-                    more than 90% or the alignment covers more than 18 amino acids.""")
-        st.write("""Notice this filter is designed to work with peptides, values for genes are extrapolated by considering
-                    all the peptides in a gene and computing the mean of each metric (which dilutes the signal since most peptides
-                    have no matches).                        
-                    """)
+    with st.expander("Show me an example and more details about the filtering process"):
+        
+        st.write("""#### Using the Filters""")
+        st.write(""" - **Identity Slider**: If you set the identity slider to 90%, only alignments where 90% or fewer of the amino acids match between sequences will be shown.""")
+        st.write(""" - **Alignment Length Slider**: If you set the alignment length slider to 18, only alignments covering 18 or fewer amino acids of the 20-AA peptides will be considered.""")
+            
+        st.write("""#### Filter Combination""")
+        st.write("""If you want both conditions (identity ≤ 90% AND alignment length ≤ 18) to be met simultaneously, select "Joint" as the Filter Combination option. This ensures that only alignments satisfying both criteria are retained. Otherwise, the filters will be executed sequentially.""")
+    
+        st.write("""#### Gene Filtering Options""")
+        st.write("""This filter is primarily designed to work with peptides, but you can choose how values for genes are extrapolated using the **Rule for Gene Filtering** options:""")
+        st.write("""##### Use Mean Values Over Gene Peptides""")
+        st.write("""This option calculates the average of the metrics across all peptides in a gene. While this approach may dilute the signal (since many peptides may not have matches), it provides an overall metric for the gene.""")
+        st.write("""##### Use Percentile Values Over Gene Peptides""")
+        st.write("""Alternatively, you can represent a gene by a specific percentile value calculated across all its peptides. This allows for more granular control over how the gene is represented:""")
+        st.write(""" - **0th Percentile**: Represents the gene by the smallest value observed among its peptides.""")
+        st.write(""" - **100th Percentile**: Represents the gene by the largest value observed among its peptides.""")
+        st.write(""" - **50th Percentile**: Uses the median value of the peptides to represent the gene.""")
+        st.write(""" - **Xth Percentile**: Represents the gene by the value of the metric (Z) for which X% of the gene’s peptides have a value ≤ Z.""")
+        
+        st.write("""#### Example: Filtering by Percentile""")
+        st.write("""For example, if you set the alignment length filter to the 90th percentile, this will sort all peptides of a gene by alignment length (in increasing order) and select the length that is greater than 90% of the peptides. This value will represent the gene in the filter evaluation.""")
+
+        st.write("""#### Important Note""")
+        st.write("""Peptides are always evaluated individually. The gene extrapolation rules apply only to the way gene metrics are calculated, not to individual peptides.""")
 
     # Gene filtering rules.
     col1, col2 = st.columns([1.5,1])
@@ -333,7 +377,15 @@ def show_human_identity_filters():
             value=st.session_state.human_id_gene_pc, 
             help="Chooses which percentile (over the gene peptides metrics) to use for filtering genes."        
         )
-        
+    
+    # Choose filter mode    
+    st.session_state.human_id_joint_rule = st.radio(
+        "Filter combination (identity and length)",
+        options=["Joint (both conditions must be true simultaneously)", "Independent (evaluated sequentially)"],
+        index=0,  # Default to "All replicates"
+        help="Select the way the filtering conditions are applied to the data for human identity filtering."
+    )
+    
     pident_col, length_col = st.columns(2)                    
     # Identity Percent Slider
     with pident_col:
@@ -357,14 +409,33 @@ def show_strain_conservation_filters():
     st.write("""This slider determines the minimum frequency of the AA haplotype observed in all Pf7 African samples (n ~ 8000)
                 for a candidate peptide or gene to be considered.""")
     with st.expander("Show me an example and more info"):
-        st.write("""**Example**: Suppose you set the frequency slider to 1.0, this means that for a candidate peptide or gene exon to 
+        
+        st.write("""#### Example: Stringent Frequency""")
+        st.write("""Suppose you set the frequency slider to 1.0, this means that for a candidate peptide or gene to 
                     be retained the only haplotype observed in African field samples must be at a frequency of 100%.
                     We recommend a less stringent filtering value (e.g., 0.99 or 0.95), as this would accomodate sequencing errors and 
-                    sporadic rare variants.""")                      
-        st.write("""Notice this filter behaves differently in genes and peptides. The longer the haplotype, the more likely it is 
-                    to accumulate mutations, which means that many peptide haplotypes (20-AAs) have no mutations at all 
-                    (a single fixed haplotype at 100% frequency) whereas long genes are more likely to stratify into different haplotypes.
-                    """)
+                    sporadic rare variants.""")  
+        
+        st.write("""#### Haplotype Selection""")
+        st.write("""When filtering by frequency, you can choose between restricting the filtering to haplotypes that are identical to 3D7 
+                    (the reference genome) or to consider any haplotype independently of its mutations.""")  
+        
+        st.write("""#### Gene Filtering Options""")
+        st.write("""You can choose how values for genes are computed using the **Rule for Gene Filtering** options:""")
+        st.write("""##### Use Frequency of Full Gene Haplotype""")
+        st.write("""This option uses a single haplotype covering the whole gene (exons) to represent the gene.""")
+        st.write("""##### Use Frequency Percentile Over Gene Peptides""")
+        st.write("""Alternatively, you can represent a gene by a specific percentile frequency calculated across all its peptides. This allows for more granular control over how the gene is represented:""")
+        st.write(""" - **0th Percentile**: Represents the gene by the lowest frequency observed among its peptides.""")
+        st.write(""" - **100th Percentile**: Represents the gene by the highest frequency observed among its peptides.""")
+        st.write(""" - **50th Percentile**: Uses the median frequency of the peptides to represent the gene.""")
+        st.write(""" - **Xth Percentile**: Represents the gene by the frequency value (Z) for which X% of the gene’s peptides have a frequency ≤ Z.""")
+        
+        st.write("""#### Example: Filtering by Percentile""")
+        st.write("""For example, if you set the frequency filter to the 10th percentile, this will sort all peptides of a gene by frequency (in increasing order) and select the frequency that is greater than 10% of the peptides. This value will represent the gene in the filter evaluation.""")
+    
+        st.write("""#### Important Note""")
+        st.write("""Peptides are always evaluated individually. The gene extrapolation rules apply only to the way gene metrics are calculated, not to individual peptides.""")
 
     
     # Gene filtering rules.
@@ -512,15 +583,18 @@ def show_filters():
         st.session_state.human_id_gene_rule = "Use mean values over gene peptides"
     if 'human_id_gene_pc' not in st.session_state:
         st.session_state.human_id_gene_pc = 5
+    if 'human_id_joint_rule' not in st.session_state:
+        st.session_state.human_id_joint_rule = "Joint (both conditions must be true simultaneously)"      
         
     # Init initial summary stats for filtering.
     if 'summary_genes_df' not in st.session_state:
-    # Filter the datasets and store them in session state
+        # Filter the datasets and store them in session state
         summary_genes_df, summary_peptides_df, filtered_genes_df, filtered_peptides_df = filter_datasets(
             st.session_state.gene_metrics_df,
             st.session_state.peptide_metrics_df,
             st.session_state.human_id_gene_rule,
-            st.session_state.human_id_gene_pc,            
+            st.session_state.human_id_gene_pc,
+            st.session_state.human_id_joint_rule,            
             st.session_state.identity_percent,
             st.session_state.alignment_length,
             st.session_state.strain_conservation,
@@ -558,7 +632,8 @@ def show_filters():
                 st.session_state.gene_metrics_df,
                 st.session_state.peptide_metrics_df,
                 st.session_state.human_id_gene_rule,
-                st.session_state.human_id_gene_pc, 
+                st.session_state.human_id_gene_pc,
+                st.session_state.human_id_joint_rule,
                 st.session_state.identity_percent,
                 st.session_state.alignment_length,
                 st.session_state.strain_conservation,
@@ -576,43 +651,60 @@ def show_filters():
             st.session_state.filtered_genes_df = filtered_genes_df
             st.session_state.filtered_peptides_df = filtered_peptides_df
 
-    # Display summary statistics
-    gene_col, peptide_col = st.columns([1, 1])  # Adjust the ratio to control the width    
-    with gene_col:
-        num_genes_retained = len(st.session_state.filtered_genes_df)
-        num_total_peptides = st.session_state.filtered_genes_df.num_peptides.sum()
-        st.write("## Gene Filtering")
-        st.markdown(f'##### Genes retained: **{num_genes_retained:,}**')
-        st.write(f'Total peptides: {num_total_peptides:,}')
-        st.write(f'Average peptides per gene: {round(num_total_peptides/num_genes_retained, 2):,}')
-        
-        st.dataframe(st.session_state.summary_genes_df.set_index('filter').drop('order', axis=1))
-    with peptide_col:
-        num_genes_retained = len(set(st.session_state.filtered_peptides_df.gene_id))
-        num_total_peptides = len(st.session_state.filtered_peptides_df)
-        st.write("## Peptide Filtering")
-        st.write(f'##### Pepties retained: **{num_total_peptides:,}**')
-        st.write(f'Genes involved: {num_genes_retained:,}')
-        st.write(f'Average peptides per gene: {round(num_total_peptides/num_genes_retained, 2):,}')
-        
-        st.dataframe(st.session_state.summary_peptides_df.set_index('filter').drop('order', axis=1))
+    # Gene results.
+    num_genes_retained = len(st.session_state.filtered_genes_df)
+    num_total_peptides = st.session_state.filtered_genes_df.num_peptides.sum()    
+    with st.container():
+        st.write('\n')
+        st.write("## Gene Filtering Results")
+        st.write("Here you'll find a summary of the filtering results. You can download the summary of the filtering or the final list of genes. Remember that genes are filtered independently of peptides (following your filtering configuration).")
+        st.dataframe(st.session_state.summary_genes_df.set_index('filter').drop('order', axis=1))    
+        st.markdown(f'##### Genes retained: `{num_genes_retained:,}`')
+        st.write(f'##### Total number of peptides: `{num_total_peptides:,}`')
+        st.write(f'##### Average number of peptides per gene: `{round(num_total_peptides/num_genes_retained, 2):,}`')        
 
-
-    gene_col_download, peptide_col_download = st.columns([1,1])
-    with gene_col_download:
-        st.download_button(
-            label="Download List of Candidate Genes",
+        lc, rc, _ = st.columns([1,1,2])
+        lc.download_button(
+            label="Download Filtering Summary (Genes)",
+            data=dataframe_to_csv(st.session_state.summary_genes_df),
+            file_name="candidate-genes-filter-summary.csv",
+            mime="text/csv"
+        )
+        rc.download_button(
+            label="Download Table of Candidate Genes",
             data=dataframe_to_csv(st.session_state.filtered_genes_df[['gene_id', 'chromosome', 'start', 'end', 'gene_name', 'plasmo_db_url', 'num_peptides', 'hap_top_hap']]),
             file_name="candidate-genes.csv",
             mime="text/csv"
         )
-    with peptide_col_download:
+    
+    # Peptide results.    
+    num_genes_retained = len(set(st.session_state.filtered_peptides_df.gene_id))
+    num_total_peptides = len(st.session_state.filtered_peptides_df)
+    with st.container():
+        st.write('\n')
+        st.write('\n')
+        st.write("## Peptide Filtering Results")
+        st.write("Here you'll find a summary of the filtering results. You can download the summary of the filtering or the final list of genes. Remember that genes are filtered independently of peptides (following your filtering configuration).")
+        st.dataframe(st.session_state.summary_peptides_df.set_index('filter').drop('order', axis=1))                
+        st.write(f'##### Peptides retained: `{num_total_peptides:,}`')
+        st.write(f'##### Genes involved (at least one peptide retained): `{num_genes_retained:,}`')
+        st.write(f'##### Average number of peptides per gene: `{round(num_total_peptides/num_genes_retained, 2):,}`')        
+
         peptide_results_df = st.session_state.filtered_peptides_df[['peptide_id', 'gene_id', 'start', 'end', 'peptide', 'chromosome', 'gene_name', 'plasmo_db_url', 'hap_top_hap']]
         compress_data = False
         if len(peptide_results_df) > 20000:
             compress_data = True
-        st.download_button(
-            label="Download List of Candidate Peptides",
+            
+        lc, rc, _ = st.columns([1,1,2])
+        lc.download_button(
+            label="Download Filtering Summary (Peptides)",
+            data=dataframe_to_csv(st.session_state.summary_peptides_df),
+            file_name="candidate-genes-filter-summary.csv",
+            mime="text/csv"
+        )
+        
+        rc.download_button(
+            label="Download Table of Candidate Peptides",
             data=dataframe_to_csv(peptide_results_df, compress_data),
             file_name="candidate-peptides.csv" + ".gz" if compress_data else '',
             mime="text/csv" if not compress_data else "application/gzip" 
