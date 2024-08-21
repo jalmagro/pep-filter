@@ -565,7 +565,7 @@ def show_filters():
     if 'haplotype_gene_rule' not in st.session_state:
         st.session_state.haplotype_gene_rule = "Use frequency of full exon haplotype"
     if 'haplotype_gene_pc' not in st.session_state:
-        st.session_state.haplotype_gene_pc = 5    
+        st.session_state.haplotype_gene_pc = 95    
     if 'human_id_gene_rule' not in st.session_state:
         st.session_state.human_id_gene_rule = "Use mean values over gene peptides"
     if 'human_id_gene_pc' not in st.session_state:
