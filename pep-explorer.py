@@ -221,14 +221,7 @@ def filter_datasets(
     cpm_cutoff,
     expression_stage, 
     homology_species
-):
-    
-    # Translate min or max values from percentiles into 0/100th percentiles.
-    if isinstance(human_id_gene_pc, str):
-        human_id_gene_pc = int(human_id_gene_pc.replace('min','0').replace('max','100'))
-    if isinstance(haplotype_gene_pc, str):
-        haplotype_gene_pc = int(haplotype_gene_pc.replace('min','0').replace('max','100'))
-    
+):        
     # Filters that are always executed.
     # Update their filtering values.
     human_id_filter = FILTERS['f_human_identity_filter'].copy()
@@ -237,7 +230,7 @@ def filter_datasets(
     human_length_filter['value'] = alignment_length 
     
     # Get the right percentile column if required.
-    if human_id_gene_rule == 'Use percentile values over gene peptides':
+    if human_id_gene_rule == 'Use minimum percentage of peptides':
         human_id_filter['column'] += f'_p{human_id_gene_pc:02}'
         human_length_filter['column'] += f'_p{human_id_gene_pc:02}'
 
@@ -248,8 +241,8 @@ def filter_datasets(
         conservation_filter = FILTERS['f_strain_conservation_any_hap'].copy()    
     
     # Get the right percentile column if required.
-    if haplotype_gene_rule == 'Use frequency percentile over gene peptides':
-        conservation_filter['column'] += f'_p{haplotype_gene_pc:02}'        
+    if haplotype_gene_rule == 'Use minimum percentage of peptides':
+        conservation_filter['column'] += f'_p{(100 - haplotype_gene_pc):02}'        
     
     conservation_filter['value'] = strain_conservation
     
@@ -346,16 +339,12 @@ def show_human_identity_filters():
         st.write("""This filter is primarily designed to work with peptides, but you can choose how values for genes are extrapolated using the **Rule for Gene Filtering** options:""")
         st.write("""##### Use Mean Values Over Gene Peptides""")
         st.write("""This option calculates the average of the metrics across all peptides in a gene. While this approach may dilute the signal (since many peptides may not have matches), it provides an overall metric for the gene.""")
-        st.write("""##### Use Percentile Values Over Gene Peptides""")
-        st.write("""Alternatively, you can represent a gene by a specific percentile value calculated across all its peptides. This allows for more granular control over how the gene is represented:""")
-        st.write(""" - **0th Percentile**: Represents the gene by the smallest value observed among its peptides.""")
-        st.write(""" - **100th Percentile**: Represents the gene by the largest value observed among its peptides.""")
-        st.write(""" - **50th Percentile**: Uses the median value of the peptides to represent the gene.""")
-        st.write(""" - **Xth Percentile**: Represents the gene by the value of the metric (Z) for which X% of the gene’s peptides have a value ≤ Z.""")
-        
-        st.write("""#### Example: Filtering by Percentile""")
-        st.write("""For example, if you set the alignment length slider to 18 amino acids (AAs) and apply the alignment length filter at the 90th percentile, the peptides of each gene will be sorted by alignment length in increasing order. The filter will then select the length that is greater than 90% of the peptides for each gene. This value will represent the gene in the filter evaluation. As a result, any gene for which 10% or more of its peptides have a matching alignment length exceeding 18 AAs (the threshold set by the slider) will be removed.""")
-
+        st.write("""##### Use Minimum Percentage of Gene Peptides""")
+        st.write("""Alternatively, you can filter out a gene if a percentage of its peptides don't pass both filters.""")
+        st.write("""#### Example: Filtering by Percentage of Peptides""")
+        st.write("""For example, if you set the alignment length slider to 18 amino acids (AAs) and decide to use 
+                    a minimum peptide percentage of 90%, you will filter out any gene 
+                    for which less than 90% of their peptides have a frequency above 0.99.""")
         st.write("""#### Important Note""")
         st.write("""Peptides are always evaluated individually. The gene extrapolation rules apply only to the way gene metrics are calculated, not to individual peptides.""")
 
@@ -365,17 +354,17 @@ def show_human_identity_filters():
     with col1:
         st.session_state.human_id_gene_rule = st.radio(
             "Rule for gene filtering",
-            options=["Use mean values over gene peptides", "Use percentile values over gene peptides"],
+            options=["Use mean values over gene peptides", "Use minimum percentage of peptides"],
             index=0, 
             help="Select the rule to filter genes (peptide filtering is not affected by this)."
         )
     # CPM cutoff slider
     with col2:        
         st.session_state.human_id_gene_pc = st.select_slider(
-            "Metrics percentile",
-            options=['min',1,5,10,25,50,75,90,95,99,'max'],
+            "Percentage of gene peptides",
+            options=[0,1,5,10,25,50,75,90,95,99,100],
             value=st.session_state.human_id_gene_pc, 
-            help="Chooses which percentile (over the gene peptides metrics) to use for filtering genes."        
+            help="Chooses which percentage of the gene peptides need to pass the filter for the gene to be retained."        
         )
     
     # # Choose filter mode    
@@ -424,15 +413,12 @@ def show_strain_conservation_filters():
         st.write("""You can choose how values for genes are computed using the **Rule for Gene Filtering** options:""")
         st.write("""##### Use Frequency of Full Gene Haplotype""")
         st.write("""This option uses a single haplotype covering the whole gene (exons) to represent the gene.""")
-        st.write("""##### Use Frequency Percentile Over Gene Peptides""")
-        st.write("""Alternatively, you can represent a gene by a specific percentile frequency calculated across all its peptides. This allows for more granular control over how the gene is represented:""")
-        st.write(""" - **0th Percentile**: Represents the gene by the lowest frequency observed among its peptides.""")
-        st.write(""" - **100th Percentile**: Represents the gene by the highest frequency observed among its peptides.""")
-        st.write(""" - **50th Percentile**: Uses the median frequency of the peptides to represent the gene.""")
-        st.write(""" - **Xth Percentile**: Represents the gene by the frequency value (Z) for which X% of the gene’s peptides have a frequency ≤ Z.""")
-        
-        st.write("""#### Example: Filtering by Percentile""")
-        st.write("""For example, if you set the minimum allowed frequency to 0.99 and decide to use frequency percentiles choosing the 10th percentile, you will filter out any gene for which less than 90% of their peptides have a frequency above 0.99.""")
+        st.write("""##### Use Minimum Percentage of Gene Peptides""")
+        st.write("""Alternatively, you can filter out a gene if a percentage of its peptides don't pass the frequency filter.""")
+        st.write("""#### Example: Filtering by Percentage of Peptides""")
+        st.write("""For example, if you set the minimum allowed frequency to 0.99 and decide to use 
+                    a minimum peptide percentage of 90%, you will filter out any gene 
+                    for which less than 90% of their peptides have a frequency above 0.99.""")
     
         st.write("""#### Important Note""")
         st.write("""Peptides are always evaluated individually. The gene extrapolation rules apply only to the way gene metrics are calculated, not to individual peptides.""")
@@ -444,17 +430,17 @@ def show_strain_conservation_filters():
     with col1:
         st.session_state.haplotype_gene_rule = st.radio(
             "Rule for gene filtering",
-            options=["Use frequency of full exon haplotype", "Use frequency percentile over gene peptides"],
+            options=["Use frequency of full exon haplotype", "Use minimum percentage of peptides"],
             index=0, 
             help="Select the rule to filter genes (peptide filtering is not affected by this)."
         )
     # CPM cutoff slider
     with col2:        
         st.session_state.haplotype_gene_pc = st.select_slider(
-            "Frequency percentile",
-            options=['min',1,5,10,25,50,75,90,95,99,'max'],
+            "Percentage of gene peptides",
+            options=[0,1,5,10,25,50,75,90,95,99,100],
             value=st.session_state.haplotype_gene_pc, 
-            help="Chooses which frequency percentile (over the gene peptides) to use for filtering genes."        
+            help="Chooses which percentage of the gene peptides need to pass the filter for the gene to be retained."        
         )
 
     st.session_state.haplotype_type = st.radio(
@@ -541,6 +527,7 @@ def show_gene_homology_filters():
         homology_options, default=st.session_state.homology_species,
         help="""Genes will be required to have orthologs in the selected species."""
     )
+
 
 
 def show_filters():
@@ -666,16 +653,16 @@ def show_filters():
             st.markdown(f'###### Human identity gene-extrapolation rule: `Mean over gene peptides`')
         else:            
             human_id_gene_pc = int(str(st.session_state.human_id_gene_pc).replace('min','0').replace('max','100'))            
-            st.markdown(f'###### Human identity gene-extrapolation rule: `Percentile over gene peptides`')
-            st.write(f' - (`{human_id_gene_pc}th`) up to **{100 - human_id_gene_pc}% of gene peptides can fail** identity and length filters')            
+            st.markdown(f'###### Human identity gene-extrapolation rule: `Minimum percentage of gene peptides`')
+            st.write(f' - Up to **{100 - human_id_gene_pc}% of gene peptides can fail** identity and length filters')            
             
             
         if st.session_state.haplotype_gene_rule == "Use frequency of full exon haplotype":
             st.markdown(f'###### Strain conservation gene-extrapolation rule: `Full gene haplotype`')
         else:
             haplotype_gene_pc = int(str(st.session_state.haplotype_gene_pc).replace('min','0').replace('max','100'))
-            st.markdown(f'###### Strain conservation gene-extrapolation rule: `Percentile over gene peptides`')
-            st.write(f'- (`{haplotype_gene_pc}th`) at least **{100 - haplotype_gene_pc}% of gene peptides must pass** frequency filter')
+            st.markdown(f'###### Strain conservation gene-extrapolation rule: `Minimum percentage of gene peptides`')
+            st.write(f'- At least **{haplotype_gene_pc}% of gene peptides must pass** frequency filter')
     
         st.write("\n")
         st.markdown(f'##### Genes retained: `{num_genes_retained:,}`')
@@ -714,8 +701,17 @@ def show_filters():
         compress_data = False
         if len(peptide_results_df) > 20000:
             compress_data = True
+        
+        def generate_csv_and_download(ctx):
+            csv_data = dataframe_to_csv(peptide_results_df, compress_data)
+            ctx.download_button(
+                label="Download Table of Candidate Peptides",
+                data=csv_data,
+                file_name="candidate-peptides.csv" + (".gz" if compress_data else ''),
+                mime="text/csv" if not compress_data else "application/gzip"
+            )
             
-        lc, rc, _ = st.columns([1,1,2])
+        lc, rc, dc, _ = st.columns([1,1,1,1])
         lc.download_button(
             label="Download Filtering Summary (Peptides)",
             data=dataframe_to_csv(st.session_state.summary_peptides_df),
@@ -723,12 +719,15 @@ def show_filters():
             mime="text/csv"
         )
         
-        rc.download_button(
-            label="Download Table of Candidate Peptides",
-            data=dataframe_to_csv(peptide_results_df, compress_data),
-            file_name="candidate-peptides.csv" + ".gz" if compress_data else '',
-            mime="text/csv" if not compress_data else "application/gzip" 
-        )
+        if rc.button("Prepare Download for Peptides"):
+            generate_csv_and_download(dc)
+        
+        # rc.download_button(
+        #     label="Download Table of Candidate Peptides",
+        #     data=dataframe_to_csv(peptide_results_df, compress_data),
+        #     file_name="candidate-peptides.csv" + ".gz" if compress_data else '',
+        #     mime="text/csv" if not compress_data else "application/gzip" 
+        # )
 
 # Main navigation
 def main():
