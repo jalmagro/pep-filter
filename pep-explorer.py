@@ -1,5 +1,6 @@
 import gzip
 import re
+import time
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -93,6 +94,32 @@ FILTERS = {
         'value': True
     }
 }
+
+# Percentiles available when filtering data.
+PERCENTILES = [  
+        0,   1,   2,   3,   4,   5,   6,   7,   8,   9,  10,  
+        12,  15, 18,  20,  22,  25,  30,  40,  50,  
+        60,  70,  75,  78,  80, 82,  85,  88,  
+        90,  91,  92,  93,  94,  95,  96,  97,  98,  99, 100 
+    ]
+
+# Default values for all controls.
+DEFAULT_VALUES = {
+    'identity_percent': 80,
+    'alignment_length': 15,
+    'strain_conservation': 0.99,
+    'expression_rule': 'All replicates',
+    'cpm_cutoff': 1,
+    'expression_stage': [],
+    'homology_species': [],
+    'haplotype_type': "Identical to 3D7",
+    'haplotype_gene_rule': "Use frequency of full exon haplotype",
+    'haplotype_gene_pc': 95,
+    'human_id_gene_rule': "Use mean values over gene peptides",
+    'human_id_gene_pc': 75,
+    'human_id_joint_rule': "Joint (use both conditions in same filter)",
+}
+
 
 def flatten_list(nested_list):
     """Flatten a list that may contain nested lists and single elements."""
@@ -358,12 +385,11 @@ def show_human_identity_filters():
             index=0, 
             help="Select the rule to filter genes (peptide filtering is not affected by this)."
         )
-    # CPM cutoff slider
     with col2:        
         st.session_state.human_id_gene_pc = st.select_slider(
             "Percentage of gene peptides",
-            options=[0,1,5,10,25,50,75,90,95,99,100],
-            value=st.session_state.human_id_gene_pc, 
+            options=PERCENTILES,
+            value=DEFAULT_VALUES['human_id_gene_pc'], 
             help="Chooses which percentage of the gene peptides need to pass the filter for the gene to be retained."        
         )
     
@@ -380,14 +406,14 @@ def show_human_identity_filters():
     with pident_col:
         st.session_state.identity_percent = st.slider(
             "Identity Percent (maximum)",
-            min_value=0, max_value=100, value=st.session_state.identity_percent,  
+            min_value=0, max_value=100, value=DEFAULT_VALUES['identity_percent'],  
             help="Identity percentage between the sequences matched."
         )        
     # Alignment Length Slider
     with length_col:
         st.session_state.alignment_length = st.slider(
             "Alignment Length (maximum)",
-            min_value=0, max_value=20, value=st.session_state.alignment_length,  
+            min_value=0, max_value=20, value=DEFAULT_VALUES['alignment_length'],  
             help="Sets the alignment length (number of AAs) threshold for filtering."
         )
         
@@ -434,12 +460,11 @@ def show_strain_conservation_filters():
             index=0, 
             help="Select the rule to filter genes (peptide filtering is not affected by this)."
         )
-    # CPM cutoff slider
     with col2:        
         st.session_state.haplotype_gene_pc = st.select_slider(
             "Percentage of gene peptides",
-            options=[0,1,5,10,25,50,75,90,95,99,100],
-            value=st.session_state.haplotype_gene_pc, 
+            options=PERCENTILES,
+            value=DEFAULT_VALUES['haplotype_gene_pc'], 
             help="Chooses which percentage of the gene peptides need to pass the filter for the gene to be retained."        
         )
 
@@ -451,7 +476,7 @@ def show_strain_conservation_filters():
 
     st.session_state.strain_conservation = st.slider(
         "AA Haplotype Frequency (minimum allowed)",
-        min_value=0.0, max_value=1.0, step=0.01, value=st.session_state.strain_conservation,
+        min_value=0.0, max_value=1.0, step=0.01, value=DEFAULT_VALUES['strain_conservation'],
         help="""Frequency of the AA haplotype in field African samples."""
         )
 
@@ -493,7 +518,7 @@ def show_gene_expression_filters():
     with col2:
         st.session_state.cpm_cutoff = st.slider(
             "CPM Cutoff (>=)",
-            min_value=1, max_value=200, step=1, value=st.session_state.cpm_cutoff,  # Default value set to 10
+            min_value=1, max_value=200, step=1, value=DEFAULT_VALUES['cpm_cutoff'],  # Default value set to 10
             help="Set the minimum CPM (Counts Per Million) cutoff value for calling expressed genes."
         )
                     
@@ -507,7 +532,7 @@ def show_gene_expression_filters():
     ]
     st.session_state.expression_stage = st.multiselect(
         "Expression Stage",
-        expression_options, default=st.session_state.expression_stage,
+        expression_options, default=DEFAULT_VALUES['expression_stage'],
         help="""Genes will be required to be expressed in the selected days/stages."""
     )
 
@@ -524,11 +549,10 @@ def show_gene_homology_filters():
     ]
     st.session_state.homology_species = st.multiselect(
         "Homology in Species",
-        homology_options, default=st.session_state.homology_species,
+        homology_options, default=DEFAULT_VALUES['homology_species'],
         help="""Genes will be required to have orthologs in the selected species."""
     )
-
-
+    
 
 def show_filters():
     
@@ -545,33 +569,10 @@ def show_filters():
              (see details for each filter below). **This is work in progress, and not yet ready for wider public use**. For feedback please contact `jg10@sanger.ac.uk`.
              """)
 
-    # Initialize session state variables if they don't exist
-    if 'identity_percent' not in st.session_state:
-        st.session_state.identity_percent = 80  # Default value
-    if 'alignment_length' not in st.session_state:
-        st.session_state.alignment_length = 15  # Default value        
-    if 'strain_conservation' not in st.session_state:
-        st.session_state.strain_conservation = 0.99  # Default value
-    if 'expression_rule' not in st.session_state:
-        st.session_state.expression_rule = 'All replicates'
-    if 'cpm_cutoff' not in st.session_state:
-        st.session_state.cpm_cutoff = 1
-    if 'expression_stage' not in st.session_state:
-        st.session_state.expression_stage = []
-    if 'homology_species' not in st.session_state:
-        st.session_state.homology_species = []
-    if 'haplotype_type' not in st.session_state:
-        st.session_state.haplotype_type = "Identical to 3D7"
-    if 'haplotype_gene_rule' not in st.session_state:
-        st.session_state.haplotype_gene_rule = "Use frequency of full exon haplotype"
-    if 'haplotype_gene_pc' not in st.session_state:
-        st.session_state.haplotype_gene_pc = 95    
-    if 'human_id_gene_rule' not in st.session_state:
-        st.session_state.human_id_gene_rule = "Use mean values over gene peptides"
-    if 'human_id_gene_pc' not in st.session_state:
-        st.session_state.human_id_gene_pc = 75
-    if 'human_id_joint_rule' not in st.session_state:
-        st.session_state.human_id_joint_rule = "Joint (use both conditions in same filter)"      
+    # Init components with all default values:
+    for key, value in DEFAULT_VALUES.items():
+        if key not in st.session_state:
+            st.session_state[key] = value   
         
     # Init initial summary stats for filtering.
     if 'summary_genes_df' not in st.session_state:
@@ -613,7 +614,8 @@ def show_filters():
         # Submit button
         submit_button = st.form_submit_button(label='Filter Candidates')
 
-        if submit_button:                                    
+        if submit_button:  
+   
             # Filter the datasets and store them in session state
             summary_genes_df, summary_peptides_df, filtered_genes_df, filtered_peptides_df = filter_datasets(
                 st.session_state.gene_metrics_df,
@@ -669,19 +671,32 @@ def show_filters():
         st.write(f'##### Total number of peptides: `{num_total_peptides:,}`')
         st.write(f'##### Average number of peptides per gene: `{round(num_total_peptides/num_genes_retained, 2):,}`')        
         st.write("")
-        lc, rc, _ = st.columns([1,1,2])
+        
+        lc, rc, dc, _ = st.columns([1,1,1,1])
         lc.download_button(
             label="Download Filtering Summary (Genes)",
             data=dataframe_to_csv(st.session_state.summary_genes_df),
             file_name="candidate-genes-filter-summary.csv",
             mime="text/csv"
         )
-        rc.download_button(
-            label="Download Table of Candidate Genes",
-            data=dataframe_to_csv(st.session_state.filtered_genes_df[['gene_id', 'chromosome', 'start', 'end', 'gene_name', 'plasmo_db_url', 'num_peptides', 'hap_top_hap']]),
-            file_name="candidate-genes.csv",
-            mime="text/csv"
-        )
+        
+        def generate_csv_and_download_genes(ctx):
+            ctx.download_button(
+                label="Download Table of Candidate Genes",
+                data=dataframe_to_csv(st.session_state.filtered_genes_df[['gene_id', 'chromosome', 'start', 'end', 'gene_name', 'plasmo_db_url', 'num_peptides', 'hap_top_hap']]),
+                file_name="candidate-genes.csv",
+                mime="text/csv"
+            )
+        
+        if rc.button("Prepare Download for Genes"):
+            generate_csv_and_download_genes(dc)
+        
+        # rc.download_button(
+        #     label="Download Table of Candidate Genes",
+        #     data=dataframe_to_csv(st.session_state.filtered_genes_df[['gene_id', 'chromosome', 'start', 'end', 'gene_name', 'plasmo_db_url', 'num_peptides', 'hap_top_hap']]),
+        #     file_name="candidate-genes.csv",
+        #     mime="text/csv"
+        # )
     
     # Peptide results.    
     num_genes_retained = len(set(st.session_state.filtered_peptides_df.gene_id))
@@ -702,7 +717,7 @@ def show_filters():
         if len(peptide_results_df) > 20000:
             compress_data = True
         
-        def generate_csv_and_download(ctx):
+        def generate_csv_and_download_peptides(ctx):
             csv_data = dataframe_to_csv(peptide_results_df, compress_data)
             ctx.download_button(
                 label="Download Table of Candidate Peptides",
@@ -720,7 +735,7 @@ def show_filters():
         )
         
         if rc.button("Prepare Download for Peptides"):
-            generate_csv_and_download(dc)
+            generate_csv_and_download_peptides(dc)
         
         # rc.download_button(
         #     label="Download Table of Candidate Peptides",
