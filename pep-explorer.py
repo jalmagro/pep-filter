@@ -646,9 +646,16 @@ def show_filters():
     with st.container():
         st.write('\n')
         st.write("## Gene Filtering Results")
-        st.write("Below is a summary of the filtering results. You have the option to download either the summary of the applied filters or the final list of filtered genes. Please note that genes are filtered independently from peptides, based on the filtering settings you’ve configured.")
-        st.write("")
-        
+        st.write("""Below is a summary of the filtering results. You have the option to download either the summary of the 
+                    applied filters or the final list of filtered genes. Please note that genes are filtered independently 
+                    from peptides, based on the filtering settings you’ve configured.
+                    When downloading the gene data, you'll find the following columns that relate to AA haplotypes:
+                """)
+        st.write("- `gene_haplotype` the most frequent AA haplotype found for the whole gene.")
+        st.write("- `peptide_list` the list of most frequent AA haplotypes found for each gene peptide (separated by commas).")
+        st.write("""Notice that `peptide_list` includes all the peptides in the gene (not only those that pass all filters
+                    if you were filtering by percetage of gene peptides) and that they can be different to the sequences in `gene_haplotype`""")
+        #st.markdown('---')
         st.dataframe(st.session_state.summary_genes_df.set_index('filter').drop('order', axis=1))    
         
         if st.session_state.human_id_gene_rule == "Use mean values over gene peptides":
@@ -670,8 +677,8 @@ def show_filters():
         st.markdown(f'##### Genes retained: `{num_genes_retained:,}`')
         st.write(f'##### Total number of peptides: `{num_total_peptides:,}`')
         st.write(f'##### Average number of peptides per gene: `{round(num_total_peptides/num_genes_retained, 2):,}`')        
-        st.write("")
         
+        st.markdown('---')
         lc, rc, dc, _ = st.columns([1,1,1,1])
         lc.download_button(
             label="Download Filtering Summary (Genes)",
@@ -681,9 +688,21 @@ def show_filters():
         )
         
         def generate_csv_and_download_genes(ctx):
+            gene_data_df = st.session_state.filtered_genes_df[[
+                'gene_id', 
+                'chromosome', 
+                'start', 
+                'end', 
+                'gene_name', 
+                'plasmo_db_url', 
+                'num_peptides', 
+                'hap_top_hap',
+                'peptide_list'
+            ]].rename(columns={'hap_top_hap': 'gene_haplotype'})
+                        
             ctx.download_button(
-                label="Download Table of Candidate Genes",
-                data=dataframe_to_csv(st.session_state.filtered_genes_df[['gene_id', 'chromosome', 'start', 'end', 'gene_name', 'plasmo_db_url', 'num_peptides', 'hap_top_hap']]),
+                label="Download Table of Candidate Genes",                
+                data=dataframe_to_csv(gene_data_df),
                 file_name="candidate-genes.csv",
                 mime="text/csv"
             )
@@ -710,7 +729,6 @@ def show_filters():
         st.write(f'##### Peptides retained: `{num_total_peptides:,}`')
         st.write(f'##### Genes involved (at least one peptide retained): `{num_genes_retained:,}`')
         st.write(f'##### Average number of peptides per gene: `{round(num_total_peptides/num_genes_retained, 2):,}`')        
-        st.write("")
         
         peptide_results_df = st.session_state.filtered_peptides_df[['peptide_id', 'gene_id', 'start', 'end', 'peptide', 'chromosome', 'gene_name', 'plasmo_db_url', 'hap_top_hap']]
         compress_data = False
@@ -725,7 +743,8 @@ def show_filters():
                 file_name="candidate-peptides.csv" + (".gz" if compress_data else ''),
                 mime="text/csv" if not compress_data else "application/gzip"
             )
-            
+        
+        st.markdown('---')
         lc, rc, dc, _ = st.columns([1,1,1,1])
         lc.download_button(
             label="Download Filtering Summary (Peptides)",
