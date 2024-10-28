@@ -507,11 +507,11 @@ def main():
     # These are big files, it will take a few seconds.
     if "gene_metrics_df" not in st.session_state:
         st.session_state.gene_metrics_df = pd.read_csv(
-            "data/gene-metrics-indels-filtering.csv.gz"
+            "data/gene-metrics-filtering.csv.gz"
         )
     if "peptide_metrics_df" not in st.session_state:
         st.session_state.peptide_metrics_df = pd.read_csv(
-            "data/peptide-metrics-indels-filtering.csv.gz", low_memory=False
+            "data/peptide-metrics-filtering.csv.gz", low_memory=False
         )
 
     render_ui(TEXT_CONFIG, UI_CONFIG, FILTER_CONFIG)  # from pep.ui
