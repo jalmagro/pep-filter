@@ -2,9 +2,13 @@
 
     "app_title": "PepExplorer v2 (Filtering Module)",
     "app_description": [
-        "This is a prototype of the filtering module for the `PepExplorer` project (or `PEPEX` for short). It allows the user to filter candidate genes/peptides for potential peptide-based vaccine targets using a set of filters.",
-        "Notice you can download the filtering summary by hovering over the results tables. To download the list of candidate genes/peptides use the buttons just below the summaries (note: for results with more than 20K peptides, the output file is compressed with gzip).",
-        "Genes and peptides are filtered independently (at the gene and peptide level) but some metrics are extrapolated (see details for each filter below). **This is work in progress, and not yet ready for wider public use**. For feedback please contact `jg10@sanger.ac.uk`."
+        "This is a prototype tool within the PEPEX project designed to streamline the identification of candidate genes and peptides for potential peptide-based vaccine targets through a robust set of customizable filters. Users can apply various filtering criteria to enhance the reliability and efficacy of vaccine target selection.",
+        "- **Human Identity Filtering** allows users to eliminate peptides that closely resemble human proteins, reducing the risk of autoimmune reactions by setting thresholds on percentage identity and alignment length against human exon sequences.", 
+        "- **Strain Conservation Filtering** ensures that selected genes and peptides maintain consistent haplotypes across different Pf strains, which is crucial for developing vaccines that are effective against the majority of the parasite population.",
+        "- **Indel Frequency Filtering** removes genes or peptides with high frequencies of insertions or deletions, particularly those causing frameshifts, thereby avoiding targets that may be prone to rapid mutation and loss of function.", 
+        "- **Gene Expression Filtering** focuses on identifying genes that are actively expressed during specific life stages of the parasite, such as the liver stage or sporozoite stage, ensuring that vaccine targets are relevant and accessible during critical phases of infection.", 
+        "- **Gene Homology Filtering** excludes genes lacking orthologs in selected species, facilitating the use of animal models for validating vaccine candidates or ensuring cross-species applicability.",
+        "Notice that genes and peptides are filtered independently (at the gene and peptide level) but some metrics are extrapolated (see details for each filter below). **This is work in progress, and not yet ready for wider public use**. For feedback please contact `jg10@sanger.ac.uk`."
     ],
 
 
@@ -226,7 +230,8 @@
                             "- Note that the peptide lists contain all peptides within each gene, not only those that pass all filters. Additionally, each peptide is 20 amino acids (AA) long with a 10-AA overlap.",
                             "- In this analysis, we include only genes from the *core* genome of *Pf* (4937 genes). Three genes (`PF3D7_1038400`, `PF3D7_1335300`, `PF3D7_1335400`) are automatically excluded by the strain conservation filter, regardless of its configuration, due to their high variability which prevents reliable calling.",
                             "- For genes with multiple transcripts (65 in total), only the first transcript isoform as listed in PlasmoDB is considered.",
-                            "- A very small fraction of peptides may have a BLAST `Alignment Length` exceeding the maximum value (`20`) due to gaps in the alignment. These peptides will be filtered out regardless of the filter's settings."
+                            "- A very small fraction of peptides may have a BLAST `Alignment Length` exceeding the maximum value (`20`) due to gaps in the alignment. These peptides will be filtered out regardless of the filter's settings.",
+                            "- Peptides are created by sliding a window of 20 amino acids (AA) over CDS regions with an overlapping step of 10 AA. If the length of a CDS region is not a multiple of 20, the final peptide window is shifted to include the end of the region."
                         ]
                     }
                 ]
