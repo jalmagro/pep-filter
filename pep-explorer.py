@@ -160,11 +160,6 @@ def display_gene_results(text_config: dict):
         # Retrieve gene results text from the configuration
         gene_results_text = text_config["results"]["gene_results"]
 
-        # Display the title and description paragraphs
-        st.write(gene_results_text["title"])
-        for paragraph in gene_results_text["description"]:
-            st.write(paragraph)
-
         # Render the text for the filter.
         st.write(gene_results_text['title'])
         for paragraph in gene_results_text['description']:
@@ -197,7 +192,7 @@ def display_gene_results(text_config: dict):
                 "###### Human identity gene-extrapolation rule: `Minimum percentage of gene peptides`"
             )
             st.write(
-                f"- Up to **{100 - human_id_gene_pc}% of gene peptides can fail** identity and length filters"
+                f"- Up to **{100 - human_id_gene_pc}% of gene peptides can fail** identity and length filters."
             )
 
         # Strain conservation gene-extrapolation rule
@@ -217,8 +212,16 @@ def display_gene_results(text_config: dict):
                 "###### Strain conservation gene-extrapolation rule: `Minimum percentage of gene peptides`"
             )
             st.write(
-                f"- At least **{haplotype_gene_pc}% of gene peptides must pass** frequency filter"
+                f"- At least **{haplotype_gene_pc}% of gene peptides must pass** the frequency filter."
             )
+        
+        st.markdown(
+                "###### Indel filtering gene-extrapolation rule: `Minimum percentage of gene peptides`"
+        )
+        indel_gene_pc = parse_percentage_value(st.session_state.indel_gene_pc)
+        st.write(
+                f"- At least **{indel_gene_pc}% of gene peptides must pass** the frequency filter."
+        )
 
         # Display statistics
         st.write("\n")
