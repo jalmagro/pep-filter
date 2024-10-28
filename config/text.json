@@ -1,0 +1,260 @@
+{
+
+    "app_title": "PepExplorer Filtering Module",
+    "app_description": [
+        "This is a prototype of the filtering module for the `PepExplorer` project (or `PEPEX` for short). It allows the user to filter candidate genes/peptides for potential peptide-based vaccine targets using a set of filters.",
+        "Notice you can download the filtering summary by hovering over the results tables. To download the list of candidate genes/peptides use the buttons just below the summaries (note: for results with more than 20K peptides, the output file is compressed with gzip).",
+        "Genes and peptides are filtered independently (at the gene and peptide level) but some metrics are extrapolated (see details for each filter below). **This is work in progress, and not yet ready for wider public use**. For feedback please contact `jg10@sanger.ac.uk`."
+    ],
+
+
+    "filters": {
+
+        "human_identity_filter": {
+            "title": "#### Human Identity Filtering",
+            "description": [
+                "The sliders below allow you to filter BLAST results based on the percentage identity and alignment length of the Pf peptide sequences.",
+                "The first slider controls the maximum percentage identity allowed, which is the proportion of amino acids (AAs) that match exactly between the *Pf* peptide and human exon sequence.",
+                "The alignment length slider determines the maximum allowed length of the aligned region between the two sequences."
+            ],
+            "expander": {
+                "title": "Show me an example and more details about the filtering process",
+                "content": [
+                    {
+                        "title": "#### Using the Filters",
+                        "paragraphs": [
+                            "- **Identity Slider**: If you set the identity slider to `90%`, only alignments where `90%` or fewer of the amino acids match between sequences will be shown.",
+                            "- **Alignment Length Slider**: If you set the alignment length slider to `18`, only alignments covering `18` or fewer amino acids of the 20-AA peptides will be considered."
+                        ]
+                    },
+                    {
+                        "title": "#### Filter Combination",
+                        "paragraphs": [
+                            "If you want both conditions (identity ≤ `90%` AND alignment length ≤ `18`) to be shown simultaneously, select \"Joint\" as the Filter Combination option. Otherwise, the filters will be executed sequentially.",
+                            "**Notice you'll obtain the same results**; it only changes the way conditions are grouped into filters."
+                        ]
+                    },
+                    {
+                        "title": "#### Gene Filtering Options",
+                        "paragraphs": [
+                            "This filter is primarily designed to work with peptides, but you can choose how values for genes are extrapolated using the **Rule for Gene Filtering** options:",
+                            "##### Use Mean Values Over Gene Peptides",
+                            "This option calculates the average of the metrics across all peptides in a gene. While this approach may dilute the signal (since many peptides may not have matches), it provides an overall metric for the gene.",
+                            "##### Use Minimum Percentage of Gene Peptides",
+                            "Alternatively, you can filter out a gene if a percentage of its peptides don't pass both filters (recommended)."
+                        ]
+                    },
+                    {
+                        "title": "#### Example: Filtering by Percentage of Peptides",
+                        "paragraphs": [
+                            "For example, if you set the alignment length slider to `18` amino acids (AAs) and decide to use a minimum peptide percentage of `90%`, you will filter out any gene for which less than `90%` of their peptides have an alignment length of `18` AAs or fewer."
+                        ]
+                    },
+                    {
+                        "title": "#### Important Note",
+                        "paragraphs": [
+                            "Peptides are evaluated individually. The gene extrapolation rule (either the mean over peptides or the percentage of peptides in the gene that must pass the filter) applies only to how gene metrics are calculated and filtered, not to individual peptide evaluations."
+                        ]
+                    }
+                ]
+            }
+        },
+
+
+        "strain_conservation_filter": {
+            "title": "#### Strain Conservation",
+            "description": [
+                "This filter determines the minimum frequency of the amino acid (AA) haplotype observed in all Pf7 African samples (n ~ `8500`) for a candidate peptide or gene to be considered."
+            ],
+            "expander": {
+                "title": "Show me an example and more info",
+                "content": [
+                    {
+                        "title": "#### Example: Stringent Frequency",
+                        "paragraphs": [
+                            "Suppose you set the frequency slider to `1.0`; this means that for a candidate peptide or gene to be retained, the only haplotype observed in African field samples must be at a frequency of `100%`.",
+                            "We recommend a less stringent filtering value (e.g., `0.99` or `0.95`), as this would accommodate sequencing errors and sporadic rare variants."
+                        ]
+                    },
+                    {
+                        "title": "#### Haplotype Selection",
+                        "paragraphs": [
+                            "When filtering by frequency, you can choose between restricting the filtering to haplotypes that are identical to 3D7 (the reference genome) or considering any haplotype independently of its mutations."
+                        ]
+                    },
+                    {
+                        "title": "#### Gene Filtering Options",
+                        "paragraphs": [
+                            "You can choose how values for genes are computed using the **Rule for Gene Filtering** options:",
+                            "##### Use Frequency of Full Gene Haplotype",
+                            "This option uses a single haplotype covering the whole gene (exons) to represent the gene.",
+                            "##### Use Minimum Percentage of Gene Peptides",
+                            "Alternatively, you can filter out a gene if a percentage of its peptides don't pass the frequency filter."
+                        ]
+                    },
+                    {
+                        "title": "#### Example: Filtering by Percentage of Peptides",
+                        "paragraphs": [
+                            "For example, if you set the minimum allowed frequency to `0.99` and decide to use a minimum peptide percentage of `90%`, you will filter out any gene for which less than `90%` of their peptides have a haplotype frequency above `0.99`."
+                        ]
+                    },
+                    {
+                        "title": "#### Important Note",
+                        "paragraphs": [
+                            "Peptides are evaluated individually. The gene extrapolation rule (either using the full gene haplotype or the percentage of peptides in the gene that must pass the filter) applies only to how gene metrics are calculated and filtered, not to individual peptide evaluations."
+                        ]
+                    }
+                ]
+            }
+        },
+
+        "indel_frequency_filter": {
+            "title": "#### Indel Filtering",
+            "description": [
+                "This filter allows you to remove genes or peptides with indels above a specified frequency or of a particular type. You can also focus specifically on indels that cause frameshifts. Most genes with high-frequency indels are typically filtered out by earlier steps, such as strain conservation, making this filter more of a refinement tool. With this filter, a gene would be filtered out if a given percentage of its peptides don't pass the frequency filter."
+            ],
+            "expander": {
+                "title": "Show me an example and more info",
+                "content": [
+                    {
+                        "title": "#### Example: Stringent Indel Filtering",
+                        "paragraphs": [
+                            "The default settings for this filter include a maximum indel frequency of `0.05` (5%) and a requirement that `100%` of the peptides in the gene must meet this threshold. This effectively removes any gene with an indel in its coding region occurring at a frequency greater than `5%`.",
+                            "Indels generally impact only a small number of peptides within a gene, typically affecting two consecutive peptides. Therefore, we recommend setting the percentage threshold quite high (close to `100%`) for the filter to be effective."
+                        ]
+                    },
+                    {
+                        "title": "#### Indel Type",
+                        "paragraphs": [
+                            "You can specify which type of indel to consider: only insertions, only deletions, or both (`Any`). Note that insertions affect only the peptide where they start, whereas deletions impact all peptides they overlap with."
+                        ]
+                    },
+                    {
+                        "title": "#### Indel Effect",
+                        "paragraphs": [
+                            "You can specify which indels to consider based on their impact on the gene protein. Choosing `Only Frameshifts` will include only indels that cause a shift in the reading frame, whereas selecting `Any` will include all indels, regardless of their effect."                         
+                        ]
+                    },
+                    {
+                        "title": "#### Example: Filtering Out Any Genes with Frameshifts",
+                        "paragraphs": [
+                            "To filter out genes with an observed indel frameshift (regardless of frequency), set the indel effect to `Only Frameshifts`, the indel type to `Any`, the frequency to `0.0`, and the gene peptide percentage to `100%`."
+                        ]
+                    },
+                    {
+                        "title": "#### Important Note",
+                        "paragraphs": [
+                            "Peptides are evaluated individually. The gene extrapolation rule (defined as the percentage of peptides in the gene that must pass the filter) applies only to how gene metrics are calculated and filtered, not to individual peptide evaluations."
+                        ]
+                    }
+                ]
+            }
+        },
+
+        "gene_expression_filter": {
+            "title": "#### Gene Expression",
+            "description": [
+                "In this filter, you can specify how expressed genes are detected and filter candidates by their expression status in the liver stage (days 2, 4, 5, and 6) or the sporozoite stage."
+            ],
+            "expander": {
+                "title": "Show me an example and more info",
+                "content": [
+                    {
+                        "title": "#### Dataset and Recalling",
+                        "paragraphs": [
+                            "The dataset from Zhang *et al.* contains three biological replicates for each liver stage day and five replicates for the sporozoite stage.",
+                            "To decide if a gene has been expressed, they follow the rule \"using a cutoff of >= 1 CPM in the three biological replicates\".",
+                            "However, here you can call which genes are expressed by choosing the calling rule yourself (e.g., `All replicates` or `At least one replicate`) and specifying the minimum CPM cutoff."
+                        ]
+                    },
+                    {
+                        "title": "#### Days and Stages",
+                        "paragraphs": [
+                            "Later on, you can select in which days/stages a gene needs to be expressed in order to be considered a candidate.",
+                            "Notice the gene will have to be expressed in **all** days/stages selected. A peptide is considered expressed if its associated gene is expressed."
+                        ]
+                    },
+                    {
+                        "title": "#### Example",
+                        "paragraphs": [
+                            "Suppose you set the calling rule to `At least one replicate` and the cutoff to `5` CPM. Later you select `Liver Stage Day 6`. This means that only genes with at least one liver stage biological replicate for day 6 with `5` or more CPM will be retained."
+                        ]
+                    }
+                ]
+            }
+        },
+
+
+        "gene_homology_filter": {
+            "title": "#### Gene Homology",
+            "description": [
+                "This filter removes genes without orthologs in the selected species. Orthologs are important for vaccine development across species and for the use of animal models in the validation of candidates."
+            ],
+            "expander": null
+        }
+    },
+
+    "results": {
+
+        "gene_results" : {
+            "title": "## Gene Filtering Results",
+            "description": [
+                "Below is a summary of the filtering results. You can download either a summary of the applied filters or the final list of filtered genes. Please note that genes are filtered independently from peptides based on your configured settings."
+            ],
+            "expander": {
+                "title": "Details about the Data",
+                "content": [
+                    {
+                        "title": "#### Full-gene AA Haplotypes",
+                        "paragraphs": [
+                            "The gene data includes the following columns related to amino acid (AA) haplotypes:",
+                            "- `ref_3D7_haplotype`: The AA haplotype of each gene in the reference genome (3D7).",
+                            "- `most_frequent_haplotype`: The most frequent AA haplotype observed in African field samples for each gene."
+                        ]
+                    },
+                    {
+                        "title": "#### Peptides AA Haplotypes",
+                        "paragraphs": [
+                            "The gene data includes the following columns related to peptide haplotypes:",
+                            "- `ref_3D7_peptides_list`: A comma-separated list of the 20-AA haplotypes for each peptide in the gene from the reference sequence (3D7). For a peptide library based on 3D7 sequences, this is likely the column you'll be interested in.",
+                            "- `most_frequent_peptides_list`: A comma-separated list of the most frequent 20-AA haplotypes observed for each peptide in the gene. Note that these peptides can differ from the sequence of `most_frequent_haplotype` since that column considers the frequency of the full gene AA haplotype, whereas here we consider the frequency of each peptide haplotype independently. For a reference-agnostic peptide library, this is likely the column you'll be interested in."
+                        ]
+                    },
+                    {
+                        "title": "#### Technical Notes",
+                        "paragraphs": [
+                            "- Note that the peptide lists contain all peptides within each gene, not only those that pass all filters. Additionally, each peptide is 20 amino acids (AA) long with a 10-AA overlap.",
+                            "- In this analysis, we include only genes from the *core* genome of *Pf* (4937 genes). Three genes (`PF3D7_1038400`, `PF3D7_1335300`, `PF3D7_1335400`) are automatically excluded by the strain conservation filter, regardless of its configuration, due to their high variability which prevents reliable calling.",
+                            "- For genes with multiple transcripts (65 in total), only the first transcript isoform as listed in PlasmoDB is considered.",
+                            "- A very small fraction of peptides may have a BLAST `Alignment Length` exceeding the maximum value (`20`) due to gaps in the alignment. These peptides will be filtered out regardless of the filter's settings."
+                        ]
+                    }
+                ]
+            }
+        },
+
+
+        "peptide_results": {
+            "title": "## Peptide Filtering Results",
+            "description": [
+                "Below is a summary of the filtering results for peptides. You can download either a summary of the applied filters or the final list of filtered peptides. Note that genes are filtered independently from peptides, based on your configured settings.",
+                "If the peptide data exceeds `20,000` entries, the output file may be compressed with gzip."
+            ]
+        }
+    },
+
+    "download_notes": {
+
+        "genes": [
+            "#### Download Options",
+            "- **Filtering Summary (Genes)**: Download a CSV file summarizing the filters applied and the number of genes remaining after each filter.",
+            "- **Table of Candidate Genes**: Download a CSV file containing the list of genes that passed all the filters. For results with more than `20,000 genes`, the output file is compressed with gzip."
+        ],
+        
+        "peptides": [
+            "#### Download Options",
+            "- **Filtering Summary (Peptides)**: Download a CSV file summarizing the filters applied and the number of peptides remaining after each filter.",
+            "- **Table of Candidate Peptides**: Download a CSV file containing the list of peptides that passed all the filters. For results with more than 20,000 peptides, the output file is compressed with gzip."
+        ]
+    }
+}

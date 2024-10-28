@@ -1,0 +1,119 @@
+{
+    "filters": {
+        "f_strain_conservation_3D7": {
+            "label": "Strain Conservation",
+            "column": "hap_3D7_freq",
+            "op": ">=",
+            "value": 0.99
+        },
+        "f_strain_conservation_any_hap": {
+            "label": "Strain Conservation",
+            "column": "hap_top_hap_freq",
+            "op": ">=",
+            "value": 0.99
+        },
+
+        "f_indels_freq_any": {
+            "label": "Indel Frequency",
+            "column": "max_indel_freq_type_any_fs_any",
+            "op": "<=",
+            "value": 0.1
+        },
+
+        "f_indels_freq_any_frameshifts": {
+            "label": "Indel Frequency (only frameshifts)",
+            "column": "max_indel_freq_type_any_fs_shift",
+            "op": "<=",
+            "value": 0.1
+        },
+
+        "f_indels_freq_insertions": {
+            "label": "Insertion Frequency",
+            "column": "max_indel_freq_type_insertion_fs_any",
+            "op": "<=",
+            "value": 0.1
+        },
+
+        "f_indels_freq_insertions_frameshifts": {
+            "label": "Insertion Frequency (only frameshifts)",
+            "column": "max_indel_freq_type_insertion_fs_shift",
+            "op": "<=",
+            "value": 0.1
+        },
+
+        "f_indels_freq_deletions": {
+            "label": "Deletion Frequency",
+            "column": "max_indel_freq_type_deletion_fs_any",
+            "op": "<=",
+            "value": 0.1
+        },
+
+        "f_indels_freq_deletions_frameshifts": {
+            "label": "Deletion Frequency (only frameshifts)",
+            "column": "max_indel_freq_type_deletion_fs_shift",
+            "op": "<=",
+            "value": 0.1
+        },
+
+        "f_human_identity_filter": {
+            "label": "Human Identity %",
+            "column": "blt_pident",
+            "op": "<=",
+            "value": 60
+        },
+        "f_human_length_filter": {
+            "label": "Human Alignment Length",
+            "column": "blt_length",
+            "op": "<=",
+            "value": 15
+        },
+        "f_pb_homology": {
+            "label": "Homology in P. berghei",
+            "column": "hom_homolog_in_pb",
+            "op": "==",
+            "value": true
+        },
+        "f_pv_homology": {
+            "label": "Homology in P. vivax",
+            "column": "hom_homolog_in_pv",
+            "op": "==",
+            "value": true
+        },
+        "f_pk_homology": {
+            "label": "Homology in P. knowlesi",
+            "column": "hom_homolog_in_pk",
+            "op": "==",
+            "value": true
+        },
+        "f_liver_expression_d2": {
+            "label": "Liver-expressed D2",
+            "column": "exp_expressed_d2",
+            "op": "==",
+            "value": true
+        },
+        "f_liver_expression_d4": {
+            "label": "Liver-expressed D4",
+            "column": "exp_expressed_d4",
+            "op": "==",
+            "value": true
+        },
+        "f_liver_expression_d5": {
+            "label": "Liver-expressed D5",
+            "column": "exp_expressed_d5",
+            "op": "==",
+            "value": true
+        },
+        "f_liver_expression_d6": {
+            "label": "Liver-expressed D6",
+            "column": "exp_expressed_d6",
+            "op": "==",
+            "value": true
+        },
+        "f_liver_expression_sporozoite": {
+            "label": "Expressed in Sporozoite",
+            "column": "exp_expressed_sporozoite",
+            "op": "==",
+            "value": true
+        }
+    }
+}
