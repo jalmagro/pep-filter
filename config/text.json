@@ -1,6 +1,6 @@
 {
 
-    "app_title": "PepExplorer v2 (Filtering Module)",
+    "app_title": "PepExplorer v2 (Filtering)",
     "app_description": [
         "This is a prototype tool within the PEPEX project designed to streamline the identification of candidate genes and peptides for potential peptide-based vaccine targets through a robust set of customizable filters. Users can apply various filtering criteria to enhance the reliability and efficacy of vaccine target selection.",
         "- **Human Identity Filtering** allows users to eliminate peptides that closely resemble human proteins, reducing the risk of autoimmune reactions by setting thresholds on percentage identity and alignment length against human exon sequences.", 
