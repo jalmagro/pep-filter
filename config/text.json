@@ -1,6 +1,6 @@
 {
 
-    "app_title": "PepExplorer Filtering Module",
+    "app_title": "PepExplorer v2 (Filtering Module)",
     "app_description": [
         "This is a prototype of the filtering module for the `PepExplorer` project (or `PEPEX` for short). It allows the user to filter candidate genes/peptides for potential peptide-based vaccine targets using a set of filters.",
         "Notice you can download the filtering summary by hovering over the results tables. To download the list of candidate genes/peptides use the buttons just below the summaries (note: for results with more than 20K peptides, the output file is compressed with gzip).",
