@@ -203,15 +203,24 @@
         "gene_results" : {
             "title": "## Gene Filtering Results",
             "description": [
-                "Below is a summary of the filtering results. You can download either a summary of the applied filters or the final list of filtered genes. Please note that genes are filtered independently from peptides based on your configured settings."
+                "Below is a summary of the filtering results. You can download either a summary of the applied filters or the final list of filtered genes. Please note that genes are filtered independently from peptides based on your configured settings.",
+                "If the peptide data for selected genes exceeds `20,000` entries, the output file will be compressed as a zip file."
             ],
             "expander": {
                 "title": "Details about the Data",
                 "content": [
                     {
+                        "title": "#### Downloading Data",
+                        "paragraphs": [
+                            "You can download two output files related to the genes selected by the filters, available at both the gene and peptide levels:",
+                            "- **Selected Genes**: Contains one row per selected gene. Each row includes the full amino acid (AA) haplotypes for the gene, with overlapping peptides listed as well.",
+                            "- **Peptides for Selected Genes**: Contains one row per peptide, specifically for the peptides associated with the selected genes. This file is ideal for analyses focused on the peptide level."
+                        ]
+                    },
+                    {
                         "title": "#### Full-gene AA Haplotypes",
                         "paragraphs": [
-                            "The gene data includes the following columns related to amino acid (AA) haplotypes:",
+                            "The gene-level file includes the following columns related to amino acid (AA) haplotypes:",
                             "- `ref_3D7_haplotype`: The AA haplotype of each gene in the reference genome (3D7).",
                             "- `most_frequent_haplotype`: The most frequent AA haplotype observed in African field samples for each gene."
                         ]
@@ -219,9 +228,10 @@
                     {
                         "title": "#### Peptides AA Haplotypes",
                         "paragraphs": [
-                            "The gene data includes the following columns related to peptide haplotypes:",
+                            "The gene-level file includes the following columns related to peptide haplotypes:",
                             "- `ref_3D7_peptides_list`: A comma-separated list of the 20-AA haplotypes for each peptide in the gene from the reference sequence (3D7). For a peptide library based on 3D7 sequences, this is likely the column you'll be interested in.",
-                            "- `most_frequent_peptides_list`: A comma-separated list of the most frequent 20-AA haplotypes observed for each peptide in the gene. Note that these peptides can differ from the sequence of `most_frequent_haplotype` since that column considers the frequency of the full gene AA haplotype, whereas here we consider the frequency of each peptide haplotype independently. For a reference-agnostic peptide library, this is likely the column you'll be interested in."
+                            "- `most_frequent_peptides_list`: A comma-separated list of the most frequent 20-AA haplotypes observed for each peptide in the gene. Note that these peptides can differ from the sequence of `most_frequent_haplotype` since that column considers the frequency of the full gene AA haplotype, whereas here we consider the frequency of each peptide haplotype independently. For a reference-agnostic peptide library, this is likely the column you'll be interested in.",
+                            "The peptide-level file includes these same columns (named `ref_3D7_peptide` and `most_frequent_peptide` respectively). Notice that here you'll find one peptide per row instead of presenting them in a list."
                         ]
                     },
                     {
@@ -243,7 +253,7 @@
             "title": "## Peptide Filtering Results",
             "description": [
                 "Below is a summary of the filtering results for peptides. You can download either a summary of the applied filters or the final list of filtered peptides. Note that genes are filtered independently from peptides, based on your configured settings.",
-                "If the peptide data exceeds `20,000` entries, the output file may be compressed with gzip."
+                "If the peptide data exceeds `20,000` entries, the output file will be compressed as a zip file."
             ]
         }
     },

@@ -196,10 +196,7 @@ def display_gene_results(text_config: dict):
             )
 
         # Strain conservation gene-extrapolation rule
-        if (
-            st.session_state.haplotype_gene_rule
-            == "Use frequency of full exon haplotype"
-        ):
+        if st.session_state.haplotype_gene_rule == "Use frequency of full exon haplotype":
             st.markdown(
                 "###### Strain conservation gene-extrapolation rule: `Full gene haplotype`"
             )
@@ -214,6 +211,8 @@ def display_gene_results(text_config: dict):
             st.write(
                 f"- At least **{haplotype_gene_pc}% of gene peptides must pass** the frequency filter."
             )
+        # Haplotype selection
+        st.write(f"- **Haplotype selection**: {st.session_state.haplotype_type}")
         
         st.markdown(
                 "###### Indel filtering gene-extrapolation rule: `Minimum percentage of gene peptides`"
@@ -243,7 +242,7 @@ def display_gene_results(text_config: dict):
         st.markdown("---")
 
         # Create columns for layout control
-        lc, rc, dc, _ = st.columns([1, 1, 1, 1])
+        lc, rc, dc, pc = st.columns([1, 1, 1, 1])
         # Download button for filtering summary
         lc.download_button(
             label="Download Filtering Summary (Genes)",
@@ -253,14 +252,18 @@ def display_gene_results(text_config: dict):
         )
 
         # Function to generate and download the candidate genes data
-        def generate_csv_and_download_genes(ctx):
+        def generate_csv_and_download_genes(ctx_left, ctx_right):
             """
-            Generate the candidate genes data and provide a download button.
+            Generate the candidate genes data and provide download buttons.
 
             Parameters
             ----------
-            ctx : streamlit.delta_generator.DeltaGenerator
+            ctx_left:
                 The Streamlit context to display the download button.
+                For gene data.
+            ctx_right:
+                The Streamlit context to display the download button.
+                For peptide data (one peptide per row)
             """
             # Select relevant columns and rename for clarity
             gene_data_df = st.session_state.filtered_genes_df[
@@ -280,20 +283,58 @@ def display_gene_results(text_config: dict):
                     "ref_3D7_peptides_list",
                     "most_frequent_peptides_list"
                 ]
-            ].rename(columns={"hap_top_hap": "gene_haplotype"})
+            ]
 
             # Provide a download button for the candidate genes data
-            ctx.download_button(
-                label="Download Table of Candidate Genes",
+            ctx_left.download_button(
+                label="Download Selected Genes",
                 data=dataframe_to_csv(gene_data_df),
                 file_name="candidate-genes.csv",
                 mime="text/csv",
+            )
+            
+            # Prepare the peptide results DataFrame for download
+            peptide_data_df = st.session_state.peptide_metrics_df[
+                [
+                    "gene_id",
+                    "chromosome",
+                    "peptide_id",        
+                    "start",
+                    "end",                                                
+                    "ref_3D7_peptide",
+                    "most_frequent_peptide",
+                ]
+            ]
+            # Filter peptides, retaining ony selected genes.
+            peptide_data_df = peptide_data_df[
+                peptide_data_df['gene_id'].isin(gene_data_df.gene_id.values)
+            ]
+
+            # Determine if data should be compressed based on its size
+            compress_data = len(peptide_data_df) > 20000
+
+            # Convert the DataFrame to CSV format, compressing if necessary
+            peptides_csv_data = dataframe_to_csv(peptide_data_df, compress_data, 'selected-genes-peptides.csv')
+
+            # Determine the file name and MIME type based on compression
+            file_name = "selected-genes-peptides.csv" + (".zip" if compress_data else "")
+            mime_type = "application/gzip" if compress_data else "text/csv"
+            
+            print(file_name, mime_type, len(peptide_data_df))
+            
+            # Provide a download button for the candidate genes data
+            # with one peptide per row.
+            ctx_right.download_button(
+                label="Download Peptides for Selected Genes",
+                data=peptides_csv_data,
+                file_name=file_name,
+                mime=mime_type,
             )
 
         # Button to prepare and provide the download for genes
         if rc.button("Prepare Download for Genes"):
             # Call the function to generate and display the download button
-            generate_csv_and_download_genes(dc)
+            generate_csv_and_download_genes(dc, pc)
 
 
 def display_peptide_results(text_config: dict):
@@ -375,7 +416,7 @@ def display_peptide_results(text_config: dict):
                 "ref_3D7_peptide",
                 "most_frequent_peptide",
             ]
-        ].rename(columns={"hap_top_hap": "peptide_haplotype"})
+        ]
 
         # Determine if data should be compressed based on its size
         compress_data = len(peptide_results_df) > 20000
@@ -395,10 +436,10 @@ def display_peptide_results(text_config: dict):
             None
             """
             # Convert the DataFrame to CSV format, compressing if necessary
-            csv_data = dataframe_to_csv(peptide_results_df, compress_data)
+            csv_data = dataframe_to_csv(peptide_results_df, compress_data, 'candidate-peptides.csv')
 
             # Determine the file name and MIME type based on compression
-            file_name = "candidate-peptides.csv" + (".gz" if compress_data else "")
+            file_name = "candidate-peptides.csv" + (".zip" if compress_data else "")
             mime_type = "application/gzip" if compress_data else "text/csv"
 
             # Provide a download button for the candidate peptides data

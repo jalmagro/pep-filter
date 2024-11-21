@@ -1,4 +1,4 @@
-import gzip
+import zipfile
 import re
 import time
 import streamlit as st
@@ -48,7 +48,7 @@ def flatten_list(nested_list: list) -> list:
             flat_list.append(item)
     return flat_list
 
-def dataframe_to_csv(df: pd.DataFrame, compress_data: bool = False) -> bytes:
+def dataframe_to_csv(df: pd.DataFrame, compress_data: bool = False, file_name: str = 'data.csv') -> bytes:
     """
     Convert a DataFrame to CSV format, optionally compressing it with gzip.
 
@@ -64,13 +64,21 @@ def dataframe_to_csv(df: pd.DataFrame, compress_data: bool = False) -> bytes:
     bytes
         The CSV data as bytes. If `compress_data` is True, the data is compressed.
     """
+ # Step 1: Create the CSV data in memory
     csv_buffer = io.StringIO()
     df.to_csv(csv_buffer, index=False)
     csv_data = csv_buffer.getvalue().encode('utf-8')
+
+    # Step 2: If compression is required, create a ZIP archive
     if compress_data:
-        gzipped_csv = gzip.compress(csv_data)
-        return gzipped_csv
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # Add the CSV data as a file in the ZIP archive
+            zip_file.writestr(file_name, csv_data)
+        zip_buffer.seek(0)
+        return zip_buffer.getvalue()
     else:
+        # Return uncompressed CSV data
         return csv_data
 
 def render_dataframe_as_html(df: pd.DataFrame) -> None:
