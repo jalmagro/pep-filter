@@ -26,7 +26,8 @@ UI_CONFIG = {
         'text': 'Filter combination (identity and length)',
         'options': [
             "Joint (use both conditions in same filter)", 
-            "Independent (evaluated sequentially)"
+            "Independent (evaluated sequentially)",
+            "Use only identity filter (deactivate length filter)"
         ],
         'index': 0,  # Default to "Joint", 
         'help': 'Select the way the filtering conditions are applied to the data for human identity filtering.'

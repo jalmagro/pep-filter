@@ -294,10 +294,13 @@ def filter_datasets(
     if p['human_id_joint_rule'] == "Joint (use both conditions in same filter)":
         # Combine human identity filters into a nested list for joint application
         filters_to_apply.append([human_id_filter, human_length_filter])
-    else:
+    elif p['human_id_joint_rule'] == "Independent (evaluated sequentially)":
         # Apply human identity filters sequentially
         filters_to_apply.append(human_id_filter)
         filters_to_apply.append(human_length_filter)
+    else:
+        # Only identity filter.
+        filters_to_apply.append(human_id_filter)
 
     # Select the appropriate strain conservation filter based on haplotype type
     if p['haplotype_type'] == 'Identical to 3D7':

@@ -34,8 +34,8 @@
                     {
                         "title": "#### Filter Combination",
                         "paragraphs": [
-                            "If you want both conditions (identity ≤ `90%` AND alignment length ≤ `18`) to be shown simultaneously, select \"Joint\" as the Filter Combination option. Otherwise, the filters will be executed sequentially.",
-                            "**Notice you'll obtain the same results**; it only changes the way conditions are grouped into filters."
+                            "If you want both conditions (identity ≤ `90%` AND alignment length ≤ `18`) to be shown simultaneously, select \"Joint\" as the Filter Combination option. If you choose \"Independent\", the filters will be executed sequentially. Finally, you can choose to use only the identity filter (disregarding the filter on alignment length).",
+                            "**Notice you'll obtain the same results** if both filters are used; it only changes the way conditions are grouped into filters."
                         ]
                     },
                     {
