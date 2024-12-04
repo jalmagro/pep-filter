@@ -7,6 +7,7 @@ import numpy as np
 import io
 import itertools
 import json
+import matplotlib.pyplot as plt
 
 from pep.ui import *
 from pep.util import *
@@ -41,7 +42,7 @@ def execute_filtering(filter_config: dict):
     - The results are stored in `st.session_state` for later use in the application.
     """
     # Filter the datasets using the filter_datasets function
-    summary_genes_df, summary_peptides_df, filtered_genes_df, filtered_peptides_df = (
+    summary_genes_df, summary_peptides_df, filtered_genes_df, filtered_peptides_df, filter_to_gene_ids = (
         filter_datasets(
             gene_metrics_df=st.session_state.gene_metrics_df,
             peptide_metrics_df=st.session_state.peptide_metrics_df,
@@ -55,6 +56,7 @@ def execute_filtering(filter_config: dict):
     st.session_state.summary_peptides_df = summary_peptides_df
     st.session_state.filtered_genes_df = filtered_genes_df
     st.session_state.filtered_peptides_df = filtered_peptides_df
+    st.session_state.filter_to_gene_ids = filter_to_gene_ids
 
 
 def render_ui_form(text_config: dict, ui_config: dict, filter_config: dict):
@@ -238,8 +240,7 @@ def display_gene_results(text_config: dict):
             f"##### Average number of peptides per gene: `{avg_peptides_per_gene:,}`"
         )
 
-        # Add a horizontal separator
-        st.markdown("---")
+        st.write(f"### Download Gene Data")
 
         # Create columns for layout control
         lc, rc, dc, pc = st.columns([1, 1, 1, 1])
@@ -318,9 +319,7 @@ def display_gene_results(text_config: dict):
 
             # Determine the file name and MIME type based on compression
             file_name = "selected-genes-peptides.csv" + (".zip" if compress_data else "")
-            mime_type = "application/gzip" if compress_data else "text/csv"
-            
-            print(file_name, mime_type, len(peptide_data_df))
+            mime_type = "application/gzip" if compress_data else "text/csv"                        
             
             # Provide a download button for the candidate genes data
             # with one peptide per row.
@@ -335,7 +334,103 @@ def display_gene_results(text_config: dict):
         if rc.button("Prepare Download for Genes"):
             # Call the function to generate and display the download button
             generate_csv_and_download_genes(dc, pc)
+    
+    
+    st.write(f"## Filtering Diagnostic Plots")
+    st.write(
+        "In this section, you can visually explore how your chosen filters influence the distribution of gene sizes in the candidate set. " 
+        "Each histogram displays the size distribution of genes that were removed by a specific filter, as well as the size distribution "
+        "of the remaining genes after each filter has been applied. By examining these histograms and associated statistics, you can quickly " 
+        " assess whether certain filters tend to remove longer genes, shorter genes, or affect them more evenly."
+    )
+    st.write(
+        "This comparison helps you understand how your filtering decisions shape the gene candidate pool you are obtaining, "
+        "enabling you to adjust the filters accordingly for your requirements."
+    )
+    
+    # Plot for every filter.
+    filter_to_gene_ids = st.session_state.filter_to_gene_ids
+    filters = st.session_state.summary_genes_df['filter'].values
+    gm_df = st.session_state.gene_metrics_df
+    
+    for f in filters:
+        remaining_ids = filter_to_gene_ids['remaining'][f]
+        num_peptides_remaining = gm_df.num_peptides[gm_df.gene_id.isin(remaining_ids)]
+        removed_ids = filter_to_gene_ids['removed'][f]
+        num_peptides_removed = gm_df.num_peptides[gm_df.gene_id.isin(removed_ids)]
+        # Approximating the number number of AAs per gene.
+        num_aa_remaining = 10 * num_peptides_remaining + 10
+        num_aa_removed = 10 * num_peptides_removed + 10
+        
+        # Compute the stats.
+        stats_remaining = (
+            f"Mean: {np.mean(num_peptides_remaining):.1f}\n"
+            f"Median: {np.median(num_peptides_remaining):.1f}\n"
+            f"Std Dev: {np.std(num_peptides_remaining):.1f}\n"
+            f"Count: {len(num_peptides_remaining)}"
+        )
+        stats_removed = (
+            f"Mean: {np.mean(num_peptides_removed):.1f}\n"
+            f"Median: {np.median(num_peptides_removed):.1f}\n"
+            f"Std Dev: {np.std(num_peptides_removed):.1f}\n"
+            f"Count: {len(num_peptides_removed)}"
+        )
+                        
+        if f == 'Initial Dataset':
+            st.write(f"##### Initial Dataset")
+            fig, ax = plt.subplots(figsize=(8, 3))        
+            ax.hist(num_peptides_remaining, bins=50, color='lightgray')
+            ax.set_title('Initial Dataset (Gene Size Distribution)')
+            ax.grid(color='lightgray')
+            ax.set_ylabel('Number of genes')
+            ax.set_xlabel('Size in peptides')                        
+            ax.text(
+                0.95, 0.95, 
+                stats_remaining, 
+                transform=ax.transAxes, 
+                fontsize=10, 
+                verticalalignment='top', 
+                horizontalalignment='right',
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8, edgecolor='gray')
+            )            
+            plt.tight_layout()
+            st.pyplot(fig)
+        else:
+            
+            st.write(f"##### Filter `{f}`")
+            fig, axs = plt.subplots(ncols=2, figsize=(8, 3))        
 
+            axs[0].hist(num_peptides_removed, bins=50, color='tomato')
+            axs[0].set_title(f'Genes Removed')
+            axs[0].set_ylabel('Number of genes')
+            axs[0].set_xlabel('Size in peptides')
+            axs[0].grid(color='lightgray')
+            axs[0].text(
+                0.95, 0.95, 
+                stats_removed, 
+                transform=axs[0].transAxes, 
+                fontsize=10, 
+                verticalalignment='top', 
+                horizontalalignment='right',
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8, edgecolor='gray')
+            )                        
+            axs[1].hist(num_peptides_remaining, bins=50, color='lightgray')
+            axs[1].set_xlabel('Size in peptides')
+            axs[1].set_ylabel('Number of genes')
+            axs[1].set_title('Remaining Genes')
+            axs[1].grid(color='lightgray')
+            axs[1].text(
+                0.95, 0.95, 
+                stats_remaining, 
+                transform=axs[1].transAxes, 
+                fontsize=10, 
+                verticalalignment='top', 
+                horizontalalignment='right',
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8, edgecolor='gray')
+            )      
+
+            plt.tight_layout()           
+            st.pyplot(fig)
 
 def display_peptide_results(text_config: dict):
     """
@@ -450,8 +545,7 @@ def display_peptide_results(text_config: dict):
                 mime=mime_type,
             )
 
-        # Add a horizontal separator
-        st.markdown("---")
+        st.write(f"### Download Peptide Data")
 
         # Create columns for layout control
         lc, rc, dc, _ = st.columns([1, 1, 1, 1])

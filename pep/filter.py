@@ -62,7 +62,7 @@ def apply_filters_sequentially(
     This function applies a list of filters (which can include nested filters) sequentially to a DataFrame.
     Each filter can be a dictionary specifying a filtering condition, or a list of such dictionaries.
     Filters within a nested list are combined using logical AND.
-
+    
     Parameters
     ----------
     df : pandas.DataFrame
@@ -222,10 +222,13 @@ def filter_datasets(
     peptide_metrics_df: pd.DataFrame,
     filter_config: Dict,
     component_keys: List
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, Dict[str, set]]:
     """
     Filters the gene and peptide datasets based on various filtering criteria
-    defined in the Streamlit session state.
+    defined in the `filter_cofig` dict.
+    
+    TODO This method can do with some refactoring, it was postponed during the two
+    first refactoring iterations.
 
     Parameters
     ----------
@@ -248,7 +251,9 @@ def filter_datasets(
         Filtered gene metrics DataFrame.
     filtered_peptides_df : pd.DataFrame
         Filtered peptide metrics DataFrame.
-
+    filter_to_gene_ids: dict
+        A dict of dicts relating filter names with retained/remove gene ids.
+    
     Raises
     ------
     KeyError
@@ -259,8 +264,7 @@ def filter_datasets(
     This function extracts filtering parameters from the Streamlit session state
     and applies filters to the gene and peptide datasets accordingly.
     """
-    # List of required keys to extract from Streamlit session state
-
+    
     # Extract parameters from Streamlit session state
     missing_keys = [key for key in component_keys if key not in st.session_state]
     if missing_keys:
@@ -463,9 +467,41 @@ def filter_datasets(
     # Extract the final filtered peptide DataFrame
     filtered_peptides_df = filtered_peptides_dfs[-1] # type: ignore
 
+    # Extract the collection of genes removed by each filter.
+    filter_names = gene_summary_df['filter'].values   
+
+    # Skip the first filter since it is a placeholder.
+    filter_to_remaining_gene_ids = {
+        f: set(filtered_genes_dfs[i].gene_id) for i,f in enumerate(filter_names[1:])
+    }
+    # The first filter is fictional (no filtering)
+    filter_to_remaining_gene_ids[filter_names[0]] = set(gene_metrics_df.gene_id.values)
+    
+    # Now compute the number of genes removed.
+    filter_to_removed_gene_ids = {filter_names[0]: set()}
+    for i in range(1, len(filter_names)):
+        prev_filter = filter_names[i-1]
+        current_filter = filter_names[i]
+        removed_gene_ids = filter_to_remaining_gene_ids[prev_filter].difference(filter_to_remaining_gene_ids[current_filter])
+        filter_to_removed_gene_ids[current_filter] = removed_gene_ids    
+        
+    # Save filter mappings.
+    filter_to_gene_ids = {
+        'remaining': filter_to_remaining_gene_ids,
+        'removed': filter_to_removed_gene_ids,
+    }        
+
+    # Add to the gene summary.
+    gene_summary_df['removed'] = [
+        len(filter_to_removed_gene_ids[f]) for f in gene_summary_df['filter'].values
+    ]
+    # Resort columns
+    gene_summary_df = gene_summary_df[['order','filter', 'removed', 'remaining', 'fraction']]
+            
     return (
         gene_summary_df, 
         peptide_summary_df, 
         filtered_genes_df, 
-        filtered_peptides_df
+        filtered_peptides_df,
+        filter_to_gene_ids
     ) # type: ignore
