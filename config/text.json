@@ -8,7 +8,9 @@
         "- **Indel Frequency Filtering** removes genes or peptides with high frequencies of insertions or deletions, particularly those causing frameshifts, thereby avoiding targets that may be prone to rapid mutation and loss of function.", 
         "- **Gene Expression Filtering** focuses on identifying genes that are actively expressed during specific life stages of the parasite, such as the liver stage or sporozoite stage, ensuring that vaccine targets are relevant and accessible during critical phases of infection.", 
         "- **Gene Homology Filtering** excludes genes lacking orthologs in selected species, facilitating the use of animal models for validating vaccine candidates or ensuring cross-species applicability.",
-        "Notice that genes and peptides are filtered independently (at the gene and peptide level) but some metrics are extrapolated (see details for each filter below). **This is work in progress, and not yet ready for wider public use**. For feedback please contact `jg10@sanger.ac.uk`."
+        "Notice that genes and peptides are filtered independently (at the gene and peptide level) but some metrics are extrapolated (see details for each filter below). **This is work in progress, and not yet ready for wider public use**. For feedback please contact `jg10@sanger.ac.uk`.",
+        "**Important Note**. To reduce the memory footprint and resource usage of this prototype, **we have temporarily disable the filtering at the peptide level**, thus allowing only to generate catalogs at the gene level (i.e. the unit of inclusion/exclusion is a gene instead of an individual peptide). The peptide-level filtering functionality will be enabled again in the production version."
+
     ],
 
 
