@@ -14,6 +14,7 @@ from pep.util import *
 from pep.filter import *
 
 import re
+import gc
 import copy
 from typing import Dict, List, Tuple
 
@@ -42,10 +43,9 @@ def execute_filtering(filter_config: dict):
     - The results are stored in `st.session_state` for later use in the application.
     """
     # Filter the datasets using the filter_datasets function
-    summary_genes_df, summary_peptides_df, filtered_genes_df, filtered_peptides_df, filter_to_gene_ids = (
+    summary_genes_df, filtered_genes_df, filter_to_gene_ids = (
         filter_datasets(
             gene_metrics_df=st.session_state.gene_metrics_df,
-            peptide_metrics_df=st.session_state.peptide_metrics_df,
             filter_config=filter_config,
             component_keys=list(UI_CONFIG.keys()),
         )
@@ -53,10 +53,11 @@ def execute_filtering(filter_config: dict):
 
     # Update the Streamlit session state with the filtering results
     st.session_state.summary_genes_df = summary_genes_df
-    st.session_state.summary_peptides_df = summary_peptides_df
     st.session_state.filtered_genes_df = filtered_genes_df
-    st.session_state.filtered_peptides_df = filtered_peptides_df
     st.session_state.filter_to_gene_ids = filter_to_gene_ids
+    
+    # Clean house to avoid lingering data.
+    gc.collect()
 
 
 def render_ui_form(text_config: dict, ui_config: dict, filter_config: dict):
@@ -432,138 +433,6 @@ def display_gene_results(text_config: dict):
             plt.tight_layout()           
             st.pyplot(fig)
 
-def display_peptide_results(text_config: dict):
-    """
-    Display the peptide filtering results in the Streamlit app.
-
-    Parameters
-    ----------
-    text_config : dict
-        Dictionary containing text configurations for the results section.
-
-    Returns
-    -------
-    None
-
-    Notes
-    -----
-    This function displays the peptide results including:
-    - A summary of the filtering steps.
-    - The number of peptides retained.
-    - The number of genes involved.
-    - The average number of peptides per gene.
-    - Allows downloading the filtering summary and candidate peptides data.
-    """
-    # Calculate the number of genes involved (with at least one peptide retained)
-    num_genes_retained = len(set(st.session_state.filtered_peptides_df["gene_id"]))
-
-    # Calculate the total number of peptides retained after filtering
-    num_total_peptides = len(st.session_state.filtered_peptides_df)
-
-    with st.container():
-        # Add spacing for readability
-        st.write("\n")
-        st.write("\n")
-
-        # Retrieve peptide results text from the configuration
-        peptide_results_text = text_config["results"]["peptide_results"]
-        # Display the title and description paragraphs
-        st.write(peptide_results_text["title"])
-        for paragraph in peptide_results_text["description"]:
-            st.write(paragraph)
-
-        # Display the summary DataFrame with 'filter' as index and without 'order' column
-        st.dataframe(
-            st.session_state.summary_peptides_df.set_index("filter").drop(
-                "order", axis=1
-            )
-        )
-
-        # Display the number of peptides retained
-        st.write(f"##### Peptides retained: `{num_total_peptides:,}`")
-
-        # Display the number of genes involved
-        st.write(
-            f"##### Genes involved (at least one peptide retained): `{num_genes_retained:,}`"
-        )
-
-        # Calculate average number of peptides per gene, avoiding division by zero
-        if num_genes_retained > 0:
-            avg_peptides_per_gene = round(num_total_peptides / num_genes_retained, 2)
-        else:
-            avg_peptides_per_gene = 0
-
-        # Display the average number of peptides per gene
-        st.write(
-            f"##### Average number of peptides per gene: `{avg_peptides_per_gene:,}`"
-        )
-
-        # Prepare the peptide results DataFrame for download
-        peptide_results_df = st.session_state.filtered_peptides_df[
-            [
-                "peptide_id",
-                "gene_id",
-                "start",
-                "end",                
-                "chromosome",
-                "gene_name",
-                "plasmo_db_url",
-                "ref_3D7_peptide",
-                "most_frequent_peptide",
-            ]
-        ]
-
-        # Determine if data should be compressed based on its size
-        compress_data = len(peptide_results_df) > 20000
-
-        # Function to generate and download the candidate peptides data
-        def generate_csv_and_download_peptides(ctx):
-            """
-            Generate the candidate peptides data and provide a download button.
-
-            Parameters
-            ----------
-            ctx : streamlit.delta_generator.DeltaGenerator
-                The Streamlit context to display the download button.
-
-            Returns
-            -------
-            None
-            """
-            # Convert the DataFrame to CSV format, compressing if necessary
-            csv_data = dataframe_to_csv(peptide_results_df, compress_data, 'candidate-peptides.csv')
-
-            # Determine the file name and MIME type based on compression
-            file_name = "candidate-peptides.csv" + (".zip" if compress_data else "")
-            mime_type = "application/gzip" if compress_data else "text/csv"
-
-            # Provide a download button for the candidate peptides data
-            ctx.download_button(
-                label="Download Table of Candidate Peptides",
-                data=csv_data,
-                file_name=file_name,
-                mime=mime_type,
-            )
-
-        st.write(f"### Download Peptide Data")
-
-        # Create columns for layout control
-        lc, rc, dc, _ = st.columns([1, 1, 1, 1])
-
-        # Download button for filtering summary
-        lc.download_button(
-            label="Download Filtering Summary (Peptides)",
-            data=dataframe_to_csv(st.session_state.summary_peptides_df),
-            file_name="candidate-peptides-filter-summary.csv",
-            mime="text/csv",
-        )
-
-        # Button to prepare and provide the download for peptides
-        if rc.button("Prepare Download for Peptides"):
-            # Call the function to generate and display the download button
-            generate_csv_and_download_peptides(dc)
-
-
 def render_ui(text_config: dict, ui_config: dict, filter_config: dict):
     """
     Render the main user interface of the Streamlit application.
@@ -629,7 +498,6 @@ def render_ui(text_config: dict, ui_config: dict, filter_config: dict):
 
     # Display filtering results for genes and peptides
     display_gene_results(text_config)
-    display_peptide_results(text_config)
 
 
 # Main navigation

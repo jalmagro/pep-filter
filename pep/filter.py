@@ -219,7 +219,6 @@ def apply_filters_sequentially(
 
 def filter_datasets(
     gene_metrics_df: pd.DataFrame, 
-    peptide_metrics_df: pd.DataFrame,
     filter_config: Dict,
     component_keys: List
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, Dict[str, set]]:
@@ -234,8 +233,6 @@ def filter_datasets(
     ----------
     gene_metrics_df : pd.DataFrame
         DataFrame containing gene metrics.
-    peptide_metrics_df : pd.DataFrame
-        DataFrame containing peptide metrics.
     filter_config : dict
         Dictionary containing filter configurations.
     component_keys: List
@@ -244,13 +241,9 @@ def filter_datasets(
     Returns
     -------
     gene_summary_df : pd.DataFrame
-        Summary DataFrame of the filtering steps for genes.
-    peptide_summary_df : pd.DataFrame
-        Summary DataFrame of the filtering steps for peptides.
+        Summary DataFrame of the filtering steps for genes.    
     filtered_genes_df : pd.DataFrame
-        Filtered gene metrics DataFrame.
-    filtered_peptides_df : pd.DataFrame
-        Filtered peptide metrics DataFrame.
+        Filtered gene metrics DataFrame.    
     filter_to_gene_ids: dict
         A dict of dicts relating filter names with retained/remove gene ids.
     
@@ -369,14 +362,7 @@ def filter_datasets(
             cutoff=p['cpm_cutoff'],
             min_num_replicates=min_num_replicates,
             total_replicates=3
-        )
-        peptide_metrics_df[f'exp_expressed_{stage}'] = call_expression_data(
-            peptide_metrics_df,
-            stage=stage,
-            cutoff=p['cpm_cutoff'],
-            min_num_replicates=min_num_replicates,
-            total_replicates=3
-        )
+        )        
 
     # Adjust minimum number of replicates for the sporozoite stage
     if p['expression_rule'] == "All replicates":
@@ -387,13 +373,6 @@ def filter_datasets(
     # Add expression data columns for the sporozoite stage
     gene_metrics_df['exp_expressed_sporozoite'] = call_expression_data(
         gene_metrics_df,
-        stage='sporozoite',
-        cutoff=p['cpm_cutoff'],
-        min_num_replicates=min_num_replicates_sporozoite,
-        total_replicates=5
-    )
-    peptide_metrics_df['exp_expressed_sporozoite'] = call_expression_data(
-        peptide_metrics_df,
         stage='sporozoite',
         cutoff=p['cpm_cutoff'],
         min_num_replicates=min_num_replicates_sporozoite,
@@ -439,34 +418,6 @@ def filter_datasets(
     # Extract the final filtered gene DataFrame
     filtered_genes_df = filtered_genes_dfs[-1] # type: ignore
 
-    # Adjust filters for peptides to match the appropriate columns
-    # Deep copy the filters to avoid modifying the original filters
-    peptide_filters_to_apply = copy.deepcopy(filters_to_apply)
-
-    # Function to flatten nested lists of filters
-    def flatten_list(nested_list):
-        """Flatten a nested list into a single list."""
-        flat_list = []
-        for item in nested_list:
-            if isinstance(item, list):
-                flat_list.extend(flatten_list(item))
-            else:
-                flat_list.append(item)
-        return flat_list
-
-    # Remove percentile suffixes from filter column names for peptides
-    for filter_dict in flatten_list(peptide_filters_to_apply):
-        filter_dict['column'] = re.sub(r'_p\d{2,3}', '', filter_dict['column'])
-
-    # Apply filters to the peptide metrics DataFrame
-    peptide_summary_df, filtered_peptides_dfs = apply_filters_sequentially(
-        peptide_metrics_df,
-        filters=peptide_filters_to_apply,
-        only_summary=False
-    )
-    # Extract the final filtered peptide DataFrame
-    filtered_peptides_df = filtered_peptides_dfs[-1] # type: ignore
-
     # Extract the collection of genes removed by each filter.
     filter_names = gene_summary_df['filter'].values   
 
@@ -499,9 +450,7 @@ def filter_datasets(
     gene_summary_df = gene_summary_df[['order','filter', 'removed', 'remaining', 'fraction']]
             
     return (
-        gene_summary_df, 
-        peptide_summary_df, 
+        gene_summary_df,  
         filtered_genes_df, 
-        filtered_peptides_df,
         filter_to_gene_ids
     ) # type: ignore
