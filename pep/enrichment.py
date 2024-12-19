@@ -141,7 +141,7 @@ class EnrichmentAnalyzer:
             D = total_in_bg - C
 
             contingency = [[A, B], [C, D]]
-            odds_ratio, p_value = fisher_exact(contingency, alternative="greater")
+            odds_ratio, p_value = fisher_exact(contingency, alternative="two-sided")
 
             fraction_in_list = A / total_in_list if total_in_list > 0 else 0.0
             fraction_in_bg = C / total_in_bg if total_in_bg > 0 else 0.0
