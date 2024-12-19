@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from pep.ui import *
 from pep.util import *
 from pep.filter import *
+from pep.enrichment import EnrichmentAnalyzer
 
 import re
 import gc
@@ -155,7 +156,9 @@ def display_gene_results(text_config: dict):
     num_genes_retained = len(st.session_state.filtered_genes_df)
 
     # Calculate the total number of peptides in the retained genes
-    num_total_peptides = st.session_state.filtered_genes_df["num_peptides"].sum()
+    # Note: we were using an approximation before, with truncation.
+    # num_total_peptides = st.session_state.filtered_genes_df["num_peptides"].sum()
+    num_total_peptides = st.session_state.peptide_metrics_df['gene_id'].isin(st.session_state.filtered_genes_df.gene_id.values).sum()
 
     with st.container():
 
@@ -336,6 +339,17 @@ def display_gene_results(text_config: dict):
             # Call the function to generate and display the download button
             generate_csv_and_download_genes(dc, pc)
     
+    st.write(f"## Enrichment Analysis")
+    st.write("The table below provides an overview of enrichment analysis for broad classes of subcellular locations (or cellular components) for the set of filtered genes.")
+    with st.expander('More details about the analysis'):
+        st.write("Here we group related GO terms, representing where a protein product is known or predicted to reside within the cell, into broader classes. This helps simplify and interpret results, revealing patterns in localization that might not be immediately clear from individual GO terms. By comparing the fraction of genes in each class for the selected gene set against that in the baseline (the entire gene dataset), we can identify classes that stand out. For instance, if the filtered set of genes shows a larger-than-expected proportion of proteins belonging to a certain class, it suggests an enrichment that might be biologically relevant. We provide a p-value as a rough guide, though it does not account for multiple hypothesis testing corrections, so it should be viewed as illustrative rather than definitive.")
+        st.write("Of special interest are genes tagged by PEXEL and HT motifs, commonly associated with proteins exported to the RBC membrane. Within our classification, these proteins fall under a dedicated class within the `Membrane Proteins` category. It’s worth noting that nearly half of the genes lack GO terms entirely. Consequently, the `Unknown` category, representing genes without cellular component annotations, will likely dominate the results. All annotations analyzed here have been gathered, curated, and merged from AmiGO (GO terms for cellular components) and PlasmoDB (PEXEL/HT motif associations).") 
+        st.write("Remember that you can sort the results of the table by clicking on the columns header.")
+        st.write("Please note that this is still a prototype and that the annotation data and class mapping will likely be refined in the future.")
+
+    selected_genes = st.session_state.filtered_genes_df.gene_id.values
+    enrichment_df = st.session_state.rich_analyzer.perform_enrichment_analysis('class', selected_genes)
+    st.dataframe(enrichment_df.set_index("class").sort_values(by='selected', ascending=False))
     
     st.write(f"## Filtering Diagnostic Plots")
     st.write(
@@ -519,7 +533,11 @@ def main():
         st.session_state.peptide_metrics_df = pd.read_csv(
             "data/peptide-metrics-filtering.csv.gz", low_memory=False
         )
-
+    
+    # Init the enrichement analyzer.
+    if "rich_analyzer" not in st.session_state:
+        st.session_state.rich_analyzer = EnrichmentAnalyzer('data/go-data-core.csv')
+    
     render_ui(TEXT_CONFIG, UI_CONFIG, FILTER_CONFIG)  # from pep.ui
 
 
